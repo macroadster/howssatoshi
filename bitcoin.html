@@ -90,7 +90,7 @@
                 </div>
                 <div class="flex flex-col items-center">
                     <span class="text-gray-400 font-semibold">Energy Usage</span>
-                    <span id="energy-usage" class="text-lg sm:text-xl font-bold mt-1">...</span>
+                    <span id="energy-usage" class="text-lg sm:text-xl font-bold text-yellow-300 mt-1">...</span>
                 </div>
             </div>
 
@@ -100,13 +100,13 @@
                     <span id="difficulty-target" class="text-lg sm:text-xl font-bold mt-1">...</span>
                 </div>
                 <div class="flex flex-col items-center">
-                    <span class="text-gray-400 font-semibold">Dollars Per Watt</span>
+                    <span class="text-gray-400 font-semibold">Dollars Per kWh</span>
                     <span id="dollars-mined" class="text-lg sm:text-xl font-bold text-green-400 mt-1">...</span>
                 </div>
             </div>
 
             <div class="mt-6 text-xs sm:text-sm text-gray-500">
-                Data refreshed every 60 seconds. Powered by CoinGecko and mempool.space APIs.
+                Data refreshed every 60 seconds. Powered by CoinGecko, blockstream.info and blockchain.info APIs.
             </div>
 
         </div>
@@ -171,9 +171,10 @@
                     const difficultyResponse = await fetch('https://blockstream.info/api/blocks');
                     const blocksData = await difficultyResponse.json();
 
-                    // Fetch average hashrate from mempool.space API
-                    const hashrateResponse = await fetch('https://mempool.space/api/v1/mining/hashrate/pools/1m');
-                    const hashrateData = await hashrateResponse.json();
+                    // Fetch Bitcoin hashrate from a new reliable source (blockchain.com)
+                    const hashrateResponse = await fetch('https://blockchain.info/q/hashrate');
+                    if (!hashrateResponse.ok) throw new Error('Failed to fetch hashrate data.');
+                    const hashrateData = await hashrateResponse.text();
 
                     let hashrateArray = [];
                     if (Array.isArray(hashrateData)) {
@@ -196,13 +197,6 @@
                         return;
                     }
 
-                    // Check if hashrate data is valid and contains an array
-                    if (hashrateArray.length === 0) {
-                        console.error('Error: Hashrate data from mempool.space API is invalid or empty.');
-                        showError();
-                        return;
-                    }
-
                     const bitcoinData = marketData[0];
                     const price = bitcoinData.current_price;
                     const marketCap = bitcoinData.market_cap;
@@ -215,24 +209,21 @@
                     // Get the most recent hashrate data for all pools
                     const poolsData = hashrateArray;
 
-                    // Calculate the total hashrate by summing up the avgHashrate from all pools.
-                    // The API reports this in TH/s (hashes per second).
-                    const totalHashrateTH = poolsData.reduce((sum, pool) => sum + pool.avgHashrate, 0) / 1000000000000;
+                    const hashrateInHashes = parseFloat(hashrateData) * 1e9; // The API returns Ghash/s, convert to H/s
 
                     // Calculate energy consumption based on a constant efficiency
                     const EFFICIENCY_J_PER_TH = 15; // Joules per Terahash
-                    const totalPowerWatts = totalHashrateTH * EFFICIENCY_J_PER_TH;
 
-                    // Convert daily Watt-hours to Terawatt-hours (TWh)
-                    const dailyEnergyTWh = (totalPowerWatts * 24) / 1000000000000;
+                    // Estimate daily energy consumption based on hashrate and average efficiency (assume 15 W/TH)
+                    const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e12 * 1000) * 24; // Convert to kWh/day
 
                     // New metric calculation: blocks/day * price / total power in Watts
                     // Approx. 144 blocks per day, average power draw in Watts per day is TWh * 1e12 / 24
                     const dailyBlocks = 144;
-                    const dollarsPerWatt = price * dailyBlocks / totalPowerWatts;
+                    const dollarsPerKWatt = price * dailyBlocks / dailyEnergyKwh;
 
                     // Now, update the UI with the fetched and calculated data
-                    updateUI(price, marketCap, change, marketCapChange, dailyEnergyTWh, difficulty, dollarsPerWatt);
+                    updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt);
 
                 } catch (error) {
                     console.error('Error fetching data:', error);
@@ -241,12 +232,12 @@
             };
 
             // Function to update the UI based on the fetched data and calculated metrics
-            const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyTWh, difficulty, dollarsPerWatt) => {
+            const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt) => {
                 let sentiment = {};
                 sentimentText.removeAttribute('data-tooltip'); // Clear any existing tooltip
 
                 // Thresholds for sentiment analysis
-                const HIGH_ENERGY_THRESHOLD = 0.547; // TWh/day (approx. 200 TWh/year)
+                const HIGH_ENERGY_THRESHOLD = 365000000; 
                 const HARD_DIFFICULTY_THRESHOLD = 1.77; // Daily increase
                 const DOOMSDAY_DIFFICULTY = 2.06e+67; // A massive, unlikely number for a theoretical "doomsday" scenario
                 
@@ -266,7 +257,7 @@
                     };
                     // Add the data attribute for the custom tooltip
                     sentimentText.setAttribute('data-tooltip', 'An excessive difficulty target represents a significant technical challenge for the network. Should it surpass a predetermined doomsday threshold, the limited pool of unique transaction hashes could introduce vulnerabilities, thereby undermining the system\'s ability to process and confirm transactions securely.');
-                } else if (dailyEnergyTWh > HIGH_ENERGY_THRESHOLD) {
+                } else if (dollarsPerKWatt > HIGH_ENERGY_THRESHOLD) {
                     // Next priority: check for high energy usage based on real-world data
                     sentiment = {
                         text: 'Working too hard',
@@ -325,11 +316,11 @@
 
                 // Update market cap, energy usage and difficulty target display
                 marketCapElement.textContent = `$${formatNumber(marketCap)}`;
-                energyUsageElement.textContent = `${dailyEnergyTWh.toFixed(4)} TWh/day`;
+                energyUsageElement.textContent = `${(dailyEnergyKwh / 1e6).toFixed(2)} GWh/day`;
                 // Display the difficulty with 'T' for trillion
                 difficultyTargetElement.textContent = formatNumber(difficulty);
                 // Update new metric
-                dollarsMinedElement.textContent = `$${dollarsPerWatt.toFixed(4)}`;
+                dollarsMinedElement.textContent = `$${dollarsPerKWatt.toFixed(4)}`;
             };
 
             // Function to handle errors
