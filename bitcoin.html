@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satoshi Nakamoto Market Sentiment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a clean, modern look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.5s ease;
+        }
+
+        /* Custom Tooltip Styling */
+        #sentiment-text[data-tooltip]::before,
+        #sentiment-text[data-tooltip]::after {
+            position: absolute;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            pointer-events: none;
+        }
+
+        #sentiment-text[data-tooltip]::before {
+            content: '';
+            border-style: solid;
+            border-width: 8px 8px 0 8px;
+            border-color: #4a5568 transparent transparent transparent;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #sentiment-text[data-tooltip]::after {
+            content: attr(data-tooltip);
+            background-color: #4a5568;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            bottom: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 400px; /* Increased max-width for better text wrapping */
+            text-align: center;
+            font-size: 0.875rem;
+        }
+
+        #sentiment-text:hover[data-tooltip]::before,
+        #sentiment-text:hover[data-tooltip]::after {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        #sentiment-text:hover {
+            cursor: help;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-8">
+
+    <div class="flex flex-col items-center max-w-lg w-full">
+        <div id="image-container" class="w-full h-96 sm:h-[600px] rounded-3xl animate-pulse flex items-center justify-center text-lg text-gray-400 mb-6 bg-gray-800">
+            Loading...
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-3xl shadow-2xl w-full text-center">
+            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
+                Bitcoin Market Sentiment
+            </h2>
+            <h2 id="sentiment-text" class="text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center">Loading...</h2>
+            
+            <div class="grid grid-cols-2 gap-4 text-sm sm:text-base mb-6">
+                <div class="flex flex-col items-center">
+                    <span class="text-gray-400 font-semibold">Bitcoin Price</span>
+                    <span id="current-price" class="text-2xl sm:text-3xl font-extrabold text-blue-400 mt-1">...</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-gray-400 font-semibold">24h Change</span>
+                    <span id="change-percent" class="text-xl sm:text-2xl font-bold mt-1">...</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm sm:text-base mb-4">
+                <div class="flex flex-col items-center">
+                    <span class="text-gray-400 font-semibold">Market Cap</span>
+                    <span id="market-cap" class="text-lg sm:text-xl font-bold mt-1">...</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-gray-400 font-semibold">Energy Usage</span>
+                    <span id="energy-usage" class="text-lg sm:text-xl font-bold mt-1">...</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm sm:text-base mb-4">
+                <div class="flex flex-col items-center">
+                    <span class="text-gray-400 font-semibold">Difficulty Target</span>
+                    <span id="difficulty-target" class="text-lg sm:text-xl font-bold mt-1">...</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-gray-400 font-semibold">Dollars Per Watt</span>
+                    <span id="dollars-mined" class="text-lg sm:text-xl font-bold text-green-400 mt-1">...</span>
+                </div>
+            </div>
+
+            <div class="mt-6 text-xs sm:text-sm text-gray-500">
+                Data refreshed every 60 seconds. Powered by CoinGecko and mempool.space APIs.
+            </div>
+
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM element references
+            const imageContainer = document.getElementById('image-container');
+            const sentimentText = document.getElementById('sentiment-text');
+            const currentPrice = document.getElementById('current-price');
+            const changePercent = document.getElementById('change-percent');
+            const marketCapElement = document.getElementById('market-cap');
+            const energyUsageElement = document.getElementById('energy-usage');
+            const difficultyTargetElement = document.getElementById('difficulty-target');
+            const dollarsMinedElement = document.getElementById('dollars-mined');
+            const body = document.body;
+
+            // Map of image filenames to their contentFetchId
+            // The file names are now used directly as the source paths.
+            const imageMap = {
+                'Fall.png': 'images/Fall.png',
+                'WinterStorm.png': 'images/WinterStorm.png',
+                'NeutralMarket.jpg': 'images/NeutralMarket.jpg',
+                'DoomsDay.png': 'images/DoomsDay.png',
+                'DrySummer.png': 'images/DrySummer.png',
+                'SpringBloom2.png': 'images/SpringBloom2.png'
+            };
+
+            // Helper function to get the correct URL for an uploaded file
+            // This now returns just the filename, which works for local files.
+            const getUploadedFileUrl = (filename) => {
+                const fetchId = imageMap[filename];
+                return fetchId;
+            };
+
+            // Helper function to format large numbers to T, B, M, K
+            const formatNumber = (num) => {
+                if (num === null || isNaN(num)) return 'N/A';
+                if (num >= 1000000000000) {
+                    return (num / 1000000000000).toFixed(2) + 'T';
+                }
+                if (num >= 1000000000) {
+                    return (num / 1000000000).toFixed(2) + 'B';
+                }
+                if (num >= 1000000) {
+                    return (num / 1000000).toFixed(2) + 'M';
+                }
+                if (num >= 1000) {
+                    return (num / 1000).toFixed(2) + 'K';
+                }
+                return num.toFixed(2);
+            };
+
+            // Function to fetch all required data
+            const fetchData = async () => {
+                try {
+                    // Fetch Bitcoin market data from CoinGecko API
+                    const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
+                    const marketData = await marketResponse.json();
+
+                    // Fetch the latest block to get the current difficulty from Blockstream API
+                    const difficultyResponse = await fetch('https://blockstream.info/api/blocks');
+                    const blocksData = await difficultyResponse.json();
+
+                    // Fetch average hashrate from mempool.space API
+                    const hashrateResponse = await fetch('https://mempool.space/api/v1/mining/hashrate/pools/1m');
+                    const hashrateData = await hashrateResponse.json();
+
+                    let hashrateArray = [];
+                    if (Array.isArray(hashrateData)) {
+                        hashrateArray = hashrateData;
+                    } else if (hashrateData && Array.isArray(hashrateData.data)) {
+                        hashrateArray = hashrateData.data;
+                    }
+
+                    // Check if market data is valid
+                    if (!Array.isArray(marketData) || marketData.length === 0) {
+                        console.error('Error: Market data from CoinGecko API is invalid.');
+                        showError();
+                        return;
+                    }
+
+                    // Check if blocks data is valid
+                    if (!Array.isArray(blocksData) || blocksData.length === 0) {
+                        console.error('Error: Blocks data from Blockstream API is invalid.');
+                        showError();
+                        return;
+                    }
+
+                    // Check if hashrate data is valid and contains an array
+                    if (hashrateArray.length === 0) {
+                        console.error('Error: Hashrate data from mempool.space API is invalid or empty.');
+                        showError();
+                        return;
+                    }
+
+                    const bitcoinData = marketData[0];
+                    const price = bitcoinData.current_price;
+                    const marketCap = bitcoinData.market_cap;
+                    const change = bitcoinData.price_change_percentage_24h;
+                    const marketCapChange = bitcoinData.market_cap_change_percentage_24h;
+
+                    // Extract the difficulty from the latest block
+                    const difficulty = blocksData[0].difficulty;
+
+                    // Get the most recent hashrate data for all pools
+                    const poolsData = hashrateArray;
+
+                    // Calculate the total hashrate by summing up the avgHashrate from all pools.
+                    // The API reports this in TH/s (hashes per second).
+                    const totalHashrateTH = poolsData.reduce((sum, pool) => sum + pool.avgHashrate, 0) / 1000000000000;
+
+                    // Calculate energy consumption based on a constant efficiency
+                    const EFFICIENCY_J_PER_TH = 15; // Joules per Terahash
+                    const totalPowerWatts = totalHashrateTH * EFFICIENCY_J_PER_TH;
+
+                    // Convert daily Watt-hours to Terawatt-hours (TWh)
+                    const dailyEnergyTWh = (totalPowerWatts * 24) / 1000000000000;
+
+                    // New metric calculation: blocks/day * price / total power in Watts
+                    // Approx. 144 blocks per day, average power draw in Watts per day is TWh * 1e12 / 24
+                    const dailyBlocks = 144;
+                    const dollarsPerWatt = price * dailyBlocks / totalPowerWatts;
+
+                    // Now, update the UI with the fetched and calculated data
+                    updateUI(price, marketCap, change, marketCapChange, dailyEnergyTWh, difficulty, dollarsPerWatt);
+
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    showError();
+                }
+            };
+
+            // Function to update the UI based on the fetched data and calculated metrics
+            const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyTWh, difficulty, dollarsPerWatt) => {
+                let sentiment = {};
+                sentimentText.removeAttribute('data-tooltip'); // Clear any existing tooltip
+
+                // Thresholds for sentiment analysis
+                const HIGH_ENERGY_THRESHOLD = 0.547; // TWh/day (approx. 200 TWh/year)
+                const HARD_DIFFICULTY_THRESHOLD = 1.77; // Daily increase
+                const DOOMSDAY_DIFFICULTY = 2.06e+67; // A massive, unlikely number for a theoretical "doomsday" scenario
+                
+                // Priority check: If the market is experiencing a significant change
+                if (marketCapChange > HARD_DIFFICULTY_THRESHOLD) {
+                    sentiment = {
+                        text: 'Need Energy',
+                        color: 'text-gray-400',
+                        image: 'WinterStorm.png',
+                    };
+                    sentimentText.setAttribute('data-tooltip', 'A substantial 24-hour change in market capitalization, exceeding a certain threshold, can necessitate a greater energy expenditure by the network. The increased value encourages a higher level of mining competition, which in turn drives up the energy used for transaction validation.');
+                } else if (difficulty > DOOMSDAY_DIFFICULTY) {
+                    sentiment = {
+                        text: 'Doom\'s Day',
+                        color: 'text-gray-400',
+                        image: 'DoomsDay.png',
+                    };
+                    // Add the data attribute for the custom tooltip
+                    sentimentText.setAttribute('data-tooltip', 'An excessive difficulty target represents a significant technical challenge for the network. Should it surpass a predetermined doomsday threshold, the limited pool of unique transaction hashes could introduce vulnerabilities, thereby undermining the system\'s ability to process and confirm transactions securely.');
+                } else if (dailyEnergyTWh > HIGH_ENERGY_THRESHOLD) {
+                    // Next priority: check for high energy usage based on real-world data
+                    sentiment = {
+                        text: 'Working too hard',
+                        color: 'text-orange-400',
+                        image: 'DrySummer.png',
+                    };
+                    // Add the data attribute for the custom tooltip
+                    sentimentText.setAttribute('data-tooltip', 'The economic model of Bitcoin\'s mining process, which issues new currency at predictable intervals, has created highly lucrative rewards for miners. This has led to an intense competition for these rewards, resulting in an expenditure of resources—particularly electricity—that is disproportionate to the system\'s needs and may be detrimental to the global community.');
+                } else if (change > 0.5) {
+                    // This is the standard bullish market condition
+                    // Now, check if the price is over $1,000,000 to use the special image
+                    if (price > 1000000) {
+                        sentiment = {
+                            text: 'Spring Bloom',
+                            color: 'text-green-400',
+                            image: 'SpringBloom2.png',
+                        };
+                    } else {
+                        sentiment = {
+                            text: 'Bullish Market',
+                            color: 'text-green-400',
+                            image: 'SpringBloom.png',
+                        };
+                    }
+                } else if (change < -0.5) {
+                    sentiment = {
+                        text: 'Bearish Market',
+                        color: 'text-red-400',
+                        image: 'Fall.png',
+                    };
+                } else {
+                    sentiment = {
+                        text: 'Neutral Market',
+                        color: 'text-yellow-400',
+                        image: 'NeutralMarket.jpg',
+                    };
+                }
+
+                // Create the image element dynamically and append it
+                const imgElement = document.createElement('img');
+                imgElement.src = getUploadedFileUrl(sentiment.image);
+                imgElement.alt = `Satoshi Nakamoto statue representing a ${sentiment.text} market`;
+                imgElement.className = "w-full h-auto rounded-3xl shadow-2xl transition-transform duration-500 ease-in-out transform hover:scale-105";
+
+                // Clear any existing content and add the new image
+                imageContainer.innerHTML = '';
+                imageContainer.appendChild(imgElement);
+
+                // Update text content and colors
+                sentimentText.textContent = sentiment.text;
+                sentimentText.className = `text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center ${sentiment.color}`;
+
+                currentPrice.textContent = `$${price.toFixed(2)}`;
+                changePercent.textContent = `${change.toFixed(2)}%`;
+                changePercent.className = `text-3xl font-bold ${change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-gray-400'}`;
+
+                // Update market cap, energy usage and difficulty target display
+                marketCapElement.textContent = `$${formatNumber(marketCap)}`;
+                energyUsageElement.textContent = `${dailyEnergyTWh.toFixed(4)} TWh/day`;
+                // Display the difficulty with 'T' for trillion
+                difficultyTargetElement.textContent = formatNumber(difficulty);
+                // Update new metric
+                dollarsMinedElement.textContent = `$${dollarsPerWatt.toFixed(4)}`;
+            };
+
+            // Function to handle errors
+            const showError = () => {
+                imageContainer.innerHTML = `<div class="text-center">Failed to fetch data. Check your network connection.</div>`;
+                sentimentText.textContent = "Error";
+                sentimentText.className = "text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center text-red-500";
+                currentPrice.textContent = "N/A";
+                changePercent.textContent = "N/A";
+                marketCapElement.textContent = "N/A";
+                energyUsageElement.textContent = "N/A";
+                difficultyTargetElement.textContent = "N/A";
+                dollarsMinedElement.textContent = "N/A";
+                body.classList.add('bg-gray-900');
+                body.classList.remove('bg-gradient-to-r', 'from-rose-400', 'via-fuchsia-500', 'to-indigo-500');
+            };
+
+            // Initial fetch on page load
+            fetchData();
+
+            // Set up an interval to refresh the data every 60 seconds
+            setInterval(fetchData, 60000);
+        });
+    </script>
+
+</body>
+</html>
