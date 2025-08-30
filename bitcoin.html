@@ -161,6 +161,31 @@
                 return fetchId;
             };
 
+            const fetchBitcoinBlocks = async () => {
+                const apiUrl = 'https://api.blockchair.com/bitcoin/stats';
+
+                try {
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    const data = await response.json();
+            
+                    // Check if the data structure is as expected
+                    if (data.data && data.data.blocks_24h !== undefined) {
+                        const blocksMined = data.data.blocks_24h;
+                        return blocksMined;
+                    } else {
+                        throw new Error('Unexpected data format from API');
+                    }
+                } catch (error) {
+                    console.error('Error fetching Bitcoin block data:', error);
+                    errorMessage.textContent = 'Error: ' + error.message;
+                    errorMessage.classList.remove('hidden');
+                    return 0;
+                }
+            };
+
             // Helper function to format large numbers to T, B, M, K
             const formatNumber = (num) => {
                 if (num === null || isNaN(num)) return 'N/A';
@@ -216,6 +241,8 @@
                         return;
                     }
 
+                    const dailyBlocks = await fetchBitcoinBlocks();
+
                     const bitcoinData = marketData[0];
                     const price = bitcoinData.current_price;
                     const marketCap = bitcoinData.market_cap;
@@ -237,26 +264,11 @@
                     // Estimate daily energy consumption based on hashrate and average efficiency
                     const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e15) * 24; // Convert to kWh/day
 
-                    // Use BlockCypher to get block count
-                    const blockcypherResponse = await fetch('https://api.blockcypher.com/v1/btc/main');
-                    const blockcypherData = await blockcypherResponse.json();
-                    
-                    const latestBlockHeight = blockcypherData.height;
-                    const latestBlockTimestamp = new Date(blockcypherData.time).getTime();
-                    
-                    // The average block time is about 10 minutes (600 seconds)
-                    const blocksIn24Hours = (24 * 60 * 60) / 600;
-                    const yesterdayBlockHeight = latestBlockHeight - blocksIn24Hours;
-
-                    const blockCount24h = latestBlockHeight - yesterdayBlockHeight;
-
-                    const dailyBlocks = blockCount24h;
-
                     // New metric calculation: blocks/day * price / total power in Watts
                     const dollarsPerKWatt = price * dailyBlocks / dailyEnergyKwh;
 
                     // Now, update the UI with the fetched and calculated data
-                    updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt);
+                    updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks);
 
                 } catch (error) {
                     console.error('Error fetching data:', error);
@@ -265,17 +277,17 @@
             };
 
             // Function to update the UI based on the fetched data and calculated metrics
-            const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt) => {
+            const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks) => {
                 let sentiment = {};
                 sentimentText.removeAttribute('data-tooltip'); // Clear any existing tooltip
 
                 // Thresholds for sentiment analysis
                 const HIGH_ENERGY_THRESHOLD = 365000000; 
-                const HARD_DIFFICULTY_THRESHOLD = 1.77; // Daily increase
+                const HARD_DIFFICULTY_THRESHOLD = 130; // Less than 130 blocks mined.
                 const DOOMSDAY_DIFFICULTY = 2.06e+67; // A massive, unlikely number for a theoretical "doomsday" scenario
                 
                 // Priority check: If the market is experiencing a significant change
-                if (marketCapChange > HARD_DIFFICULTY_THRESHOLD) {
+                if (dailyBlocks < HARD_DIFFICULTY_THRESHOLD) {
                     sentiment = {
                         text: 'Need Energy',
                         color: 'text-gray-400',
