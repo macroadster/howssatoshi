@@ -113,48 +113,6 @@
     </div>
     <script>
         /**
-         * Asynchronously fetches and counts the number of Bitcoin blocks mined in the last 24 hours.
-         */
-        async function getBlocksInLast24Hours() {
-            try {
-                // 1. Get the current block height
-                const currentBlockResponse = await fetch('https://blockchain.info/q/getblockcount');
-                if (!currentBlockResponse.ok) {
-                    throw new Error('Failed to fetch current block count.');
-                }
-                const currentBlockCount = parseInt(await currentBlockResponse.text());
-
-                // 2. Calculate the timestamp for 24 hours ago
-                const currentTime = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
-                const last24HoursTimestamp = currentTime - (24 * 60 * 60);
-
-                // 3. Get the block height from 24 hours ago
-                // The API provides a list of blocks for a given timestamp, we need to find the one closest to our target
-                const blocksByTimeResponse = await fetch(`https://blockchain.info/btc/blocks/${last24HoursTimestamp}000?format=json`);
-                if (!blocksByTimeResponse.ok) {
-                    throw new Error('Failed to fetch blocks for the past 24 hours.');
-                }
-                const blocksData = await blocksByTimeResponse.json();
-
-                // 4. Find the first block's height (which is the oldest in the list and closest to our timestamp)
-                if (!blocksData.blocks || blocksData.blocks.length === 0) {
-                    console.error('No blocks found for the timestamp from 24 hours ago.');
-                    return 0;
-                }
-
-                const block24HoursAgoHeight = blocksData.blocks[blocksData.blocks.length - 1].height;
-
-                // 5. Calculate the difference
-                const blocksInLast24Hours = currentBlockCount - block24HoursAgoHeight;
-
-                return blocksInLast24Hours;
-            } catch (error) {
-                console.error('Error fetching Bitcoin block data from Blockchain.com:', error);
-                return 0;
-            }
-        }
-
-        /**
          * Projects the ideal energy efficiency of a Bitcoin mining machine for a given year.
          */
         function projectMinerEfficiency(targetYear, baseYear = 2025, baseEfficiency = 15) {
@@ -279,8 +237,20 @@
                     // Estimate daily energy consumption based on hashrate and average efficiency
                     const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e15) * 24; // Convert to kWh/day
 
-                    // Use the result of the new function for dailyBlocks
-                    const dailyBlocks = await getBlocksInLast24Hours();
+                    // Use BlockCypher to get block count
+                    const blockcypherResponse = await fetch('https://api.blockcypher.com/v1/btc/main');
+                    const blockcypherData = await blockcypherResponse.json();
+                    
+                    const latestBlockHeight = blockcypherData.height;
+                    const latestBlockTimestamp = new Date(blockcypherData.time).getTime();
+                    
+                    // The average block time is about 10 minutes (600 seconds)
+                    const blocksIn24Hours = (24 * 60 * 60) / 600;
+                    const yesterdayBlockHeight = latestBlockHeight - blocksIn24Hours;
+
+                    const blockCount24h = latestBlockHeight - yesterdayBlockHeight;
+
+                    const dailyBlocks = blockCount24h;
 
                     // New metric calculation: blocks/day * price / total power in Watts
                     const dollarsPerKWatt = price * dailyBlocks / dailyEnergyKwh;
