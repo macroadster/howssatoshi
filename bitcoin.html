@@ -112,6 +112,66 @@
         </div>
     </div>
     <script>
+        /**
+         * Asynchronously fetches and counts the number of Bitcoin blocks mined in the last 24 hours.
+         */
+        async function getBlocksInLast24Hours() {
+            try {
+                // 1. Get the current block height
+                const currentBlockResponse = await fetch('https://blockchain.info/q/getblockcount');
+                if (!currentBlockResponse.ok) {
+                    throw new Error('Failed to fetch current block count.');
+                }
+                const currentBlockCount = parseInt(await currentBlockResponse.text());
+
+                // 2. Calculate the timestamp for 24 hours ago
+                const currentTime = Math.floor(Date.now() / 1000); // Unix timestamp in seconds
+                const last24HoursTimestamp = currentTime - (24 * 60 * 60);
+
+                // 3. Get the block height from 24 hours ago
+                // The API provides a list of blocks for a given timestamp, we need to find the one closest to our target
+                const blocksByTimeResponse = await fetch(`https://blockchain.info/btc/blocks/${last24HoursTimestamp}000?format=json`);
+                if (!blocksByTimeResponse.ok) {
+                    throw new Error('Failed to fetch blocks for the past 24 hours.');
+                }
+                const blocksData = await blocksByTimeResponse.json();
+
+                // 4. Find the first block's height (which is the oldest in the list and closest to our timestamp)
+                if (!blocksData.blocks || blocksData.blocks.length === 0) {
+                    console.error('No blocks found for the timestamp from 24 hours ago.');
+                    return 0;
+                }
+
+                const block24HoursAgoHeight = blocksData.blocks[blocksData.blocks.length - 1].height;
+
+                // 5. Calculate the difference
+                const blocksInLast24Hours = currentBlockCount - block24HoursAgoHeight;
+
+                return blocksInLast24Hours;
+            } catch (error) {
+                console.error('Error fetching Bitcoin block data from Blockchain.com:', error);
+                return 0;
+            }
+        }
+
+        /**
+         * Projects the ideal energy efficiency of a Bitcoin mining machine for a given year.
+         */
+        function projectMinerEfficiency(targetYear, baseYear = 2025, baseEfficiency = 15) {
+            const KOOMEYS_LAW_HALVING_PERIOD_YEARS = 1.57;
+            const LANDAUER_PHYSICAL_LIMIT_J_TH = 0.0028;
+
+            if (targetYear <= baseYear) {
+                return baseEfficiency;
+            }
+
+            const yearsPassed = targetYear - baseYear;
+            const numDoublingPeriods = yearsPassed / KOOMEYS_LAW_HALVING_PERIOD_YEARS;
+            const projectedEfficiency = baseEfficiency / Math.pow(2, numDoublingPeriods);
+            
+            return Math.max(projectedEfficiency, LANDAUER_PHYSICAL_LIMIT_J_TH);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             // DOM element references
             const imageContainer = document.getElementById('image-container');
@@ -211,15 +271,17 @@
 
                     const hashrateInHashes = parseFloat(hashrateData) * 1e9; // The API returns Ghash/s, convert to H/s
 
-                    // Calculate energy consumption based on a constant efficiency
-                    const EFFICIENCY_J_PER_TH = 15; // Joules per Terahash
+                    // Calculate energy consumption based on projected efficiency for the current year
+                    const currentYear = new Date().getFullYear();
+                    const EFFICIENCY_J_PER_TH = projectMinerEfficiency(currentYear);
 
-                    // Estimate daily energy consumption based on hashrate and average efficiency (assume 15 J/TH)
-                    const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e12 * 1000) * 24; // Convert to kWh/day
+                    // Estimate daily energy consumption based on hashrate and average efficiency
+                    const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e15) * 24; // Convert to kWh/day
+
+                    // Use the result of the new function for dailyBlocks
+                    const dailyBlocks = await getBlocksInLast24Hours();
 
                     // New metric calculation: blocks/day * price / total power in Watts
-                    // Approx. 144 blocks per day, average power draw in Watts per day is TWh * 1e12 / 24
-                    const dailyBlocks = 144;
                     const dollarsPerKWatt = price * dailyBlocks / dailyEnergyKwh;
 
                     // Now, update the UI with the fetched and calculated data
@@ -348,3 +410,4 @@
 
 </body>
 </html>
+
