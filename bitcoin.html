@@ -212,9 +212,9 @@
                     const hashrateInHashes = parseFloat(hashrateData) * 1e9; // The API returns Ghash/s, convert to H/s
 
                     // Calculate energy consumption based on a constant efficiency
-                    const EFFICIENCY_J_PER_TH = 30; // Joules per Terahash
+                    const EFFICIENCY_J_PER_TH = 15; // Joules per Terahash
 
-                    // Estimate daily energy consumption based on hashrate and average efficiency (assume 15 W/TH)
+                    // Estimate daily energy consumption based on hashrate and average efficiency (assume 15 J/TH)
                     const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e12 * 1000) * 24; // Convert to kWh/day
 
                     // New metric calculation: blocks/day * price / total power in Watts
