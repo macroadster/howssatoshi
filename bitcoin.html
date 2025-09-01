@@ -146,12 +146,42 @@
             // The file names are now used directly as the source paths.
             const imageMap = {
                 'Fall.png': 'images/Fall.png',
+                'Fall-0.5.png': 'images/Fall.png',
+                'Fall-0.6.png': 'images/Fall-0.6.png',
+                'Fall-0.7.png': 'images/Fall-0.7.png',
+                'Fall-0.8.png': 'images/Fall-0.8.png',
+                'Fall-0.9.png': 'images/Fall-0.9.png',
+                'Fall-1.0.png': 'images/Fall-1.0.png',
                 'WinterStorm.png': 'images/WinterStorm.png',
                 'NeutralMarket.jpg': 'images/NeutralMarket.jpg',
                 'DoomsDay.png': 'images/DoomsDay.png',
                 'DrySummer.png': 'images/DrySummer.png',
                 'SpringBloom.png': 'images/SpringBloom.png',
-                'SpringBloom2.png': 'images/SpringBloom2.png'
+                'SpringBloom-0.5.png': 'images/SpringBloom-0.5.png',
+                'SpringBloom-0.6.png': 'images/SpringBloom-0.6.png',
+                'SpringBloom-0.7.png': 'images/SpringBloom-0.7.png',
+                'SpringBloom-0.8.png': 'images/SpringBloom-0.8.png',
+                'SpringBloom-0.9.png': 'images/SpringBloom-0.9.png',
+                'SpringBloom-1.0.png': 'images/SpringBloom-1.0.png'
+            };
+
+            const changeThresholds = {
+                bullish: [
+                    { threshold: 1, image: 'SpringBloom-1.0' },
+                    { threshold: 0.9, image: 'SpringBloom-0.9' },
+                    { threshold: 0.8, image: 'SpringBloom-0.8' },
+                    { threshold: 0.7, image: 'SpringBloom-0.7' },
+                    { threshold: 0.6, image: 'SpringBloom-0.6' },
+                    { threshold: 0.5, image: 'SpringBloom-0.5' },
+                ],
+                bearish: [
+                    { threshold: -1, image: 'Fall-1.0' },
+                    { threshold: -0.9, image: 'Fall-0.9' },
+                    { threshold: -0.8, image: 'Fall-0.8' },
+                    { threshold: -0.7, image: 'Fall-0.7' },
+                    { threshold: -0.6, image: 'Fall-0.6' },
+                    { threshold: -0.5, image: 'Fall-0.5' }
+                ]
             };
 
             // Helper function to get the correct URL for an uploaded file
@@ -313,25 +343,21 @@
                     sentimentText.setAttribute('data-tooltip', 'The economic model of Bitcoin\'s mining process, which issues new currency at predictable intervals, has created highly lucrative rewards for miners. This has led to an intense competition for these rewards, resulting in an expenditure of resources—particularly electricity—that is disproportionate to the system\'s needs and may be detrimental to the global community.');
                 } else if (change > 0.5) {
                     // This is the standard bullish market condition
-                    // Now, check if the price is over $1,000,000 to use the special image
-                    if (price > 1000000) {
-                        sentiment = {
-                            text: 'Spring Bloom',
-                            color: 'text-green-400',
-                            image: 'SpringBloom2.png',
-                        };
-                    } else {
-                        sentiment = {
-                            text: 'Bullish Market',
-                            color: 'text-green-400',
-                            image: 'SpringBloom.png',
-                        };
-                    }
+                    const image = price > 1000000 
+                        ? 'SpringBloom.png' 
+                        : `${changeThresholds.bullish.find(entry => change > entry.threshold)?.image}.png`;
+                    sentiment = {
+                        text: 'Bullish Market',
+                        color: 'text-green-400',
+                        image: image,
+                    };
                 } else if (change < -0.5) {
+                    const image = `${changeThresholds.bearish.find(entry => change < entry.threshold)?.image}.png`;
+                    console.log(image)
                     sentiment = {
                         text: 'Bearish Market',
                         color: 'text-red-400',
-                        image: 'Fall.png',
+                        image: image,
                     };
                 } else {
                     sentiment = {
