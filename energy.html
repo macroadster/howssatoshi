@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satoshi Nakamoto Market Sentiment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a clean, modern look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.5s ease;
+        }
+
+        /* Custom Tooltip Styling */
+        #sentiment-text[data-tooltip]::before,
+        #sentiment-text[data-tooltip]::after {
+            position: absolute;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-8">
+
+    <div class="bg-gray-800 p-6 rounded-3xl shadow-2xl w-full">
+        <p>The energy usage of the Bitcoin network is estimated through a sophisticated model, rather than being a direct measurement from a power meter. This approach relies on two key factors: the amount of "work" the network is doing and the efficiency of the mining equipment.</p><br>
+
+        <p>The total "work" is measured by the hashrate, which represents the collective computational power of all the computers that are mining Bitcoin around the world. As the network's hashrate increases, so does the amount of work being done. To translate this workload into energy consumption, a projected efficiency is applied, which accounts for the fact that mining hardware becomes more powerful and energy-efficient over time.</p><br>
+
+        <p>By combining the total work being performed with the estimated efficiency of the machines doing that work, a reliable estimate of the network's energy footprint can be calculated.</p><br>
+
+        <br><center><a href="bitcoin.html">Back</a></center>
+    </div>
+
+</body>
+</html>
+
