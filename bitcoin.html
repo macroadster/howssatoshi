@@ -130,6 +130,46 @@
             return Math.max(projectedEfficiency, LANDAUER_PHYSICAL_LIMIT_J_TH);
         }
 
+        /**
+         * Calculates the Bitcoin block reward based on a dynamic halving schedule.
+         * This function can calculate the reward for any future date.
+         *
+         * The reward started at 50 BTC and halves approximately every 4 years
+         * (or precisely, every 210,000 blocks).
+         *
+         * @param {Date} currentDate The date for which to calculate the block reward.
+         * @returns {number} The Bitcoin block reward in BTC for the given date.
+         */
+        function getBitcoinBlockRewardForDate(currentDate) {
+          // The initial block reward
+          let reward = 50.0;
+          // The date of the very first block (genesis block)
+          const genesisBlockDate = new Date('2009-01-03');
+          // The number of days between halvings, based on a 10-minute block time
+          // 210,000 blocks * 10 minutes/block = 2,100,000 minutes
+          // 2,100,000 minutes / 60 minutes/hour = 35,000 hours
+          // 35,000 hours / 24 hours/day = ~1458.33 days, which is approximately 4 years
+          const daysBetweenHalvings = 210000 * 10 / (60 * 24);
+
+          // We'll use the known historical dates as a starting point for the calculation.
+          // The first halving was on '2012-11-28'.
+          let halvingDate = new Date('2012-11-28');
+
+          // Loop through halvings, starting from the first one
+          while (currentDate >= halvingDate) {
+            reward /= 2;
+            // Calculate the next halving date by adding the approximate days
+            halvingDate = new Date(halvingDate.getTime() + daysBetweenHalvings * 24 * 60 * 60 * 1000);
+          }
+
+          // Handle the initial period before the first halving
+          if (currentDate < new Date('2012-11-28')) {
+            return 50.0;
+          }
+
+          return reward;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             // DOM element references
             const imageContainer = document.getElementById('image-container');
@@ -234,6 +274,9 @@
                 return num.toFixed(2);
             };
 
+            const today = new Date();
+            const currentBitcoinReward = getBitcoinBlockRewardForDate(today);
+
             // Function to fetch all required data
             const fetchData = async () => {
                 try {
@@ -295,7 +338,7 @@
                     const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e15) * 24; // Convert to kWh/day
 
                     // New metric calculation: blocks/day * price / total power in Watts
-                    const dollarsPerKWatt = price * dailyBlocks / dailyEnergyKwh;
+                    const dollarsPerKWatt = price * dailyBlocks * currentBitcoinReward / dailyEnergyKwh;
 
                     // Now, update the UI with the fetched and calculated data
                     updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks);
