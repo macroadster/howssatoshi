@@ -106,7 +106,7 @@
             </div>
 
             <div class="mt-6 text-xs sm:text-sm text-gray-500">
-                Data refreshed every 60 seconds. Powered by CoinGecko, blockstream.info and blockchain.info APIs.
+                Data refreshed every 60 seconds.
             </div>
 
         </div>
@@ -284,32 +284,14 @@
                     const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
                     const marketData = await marketResponse.json();
 
-                    // Fetch the latest block to get the current difficulty from Blockstream API
-                    const difficultyResponse = await fetch('https://blockstream.info/api/blocks');
-                    const blocksData = await difficultyResponse.json();
-
-                    // Fetch Bitcoin hashrate from a new reliable source (blockchain.com)
-                    const hashrateResponse = await fetch('https://blockchain.info/q/hashrate');
+                    // Fetch Bitcoin hashrate from a new reliable source (mempool.space)
+                    const hashrateResponse = await fetch('https://mempool.space/api/v1/mining/hashrate/3d');
                     if (!hashrateResponse.ok) throw new Error('Failed to fetch hashrate data.');
-                    const hashrateData = await hashrateResponse.text();
-
-                    let hashrateArray = [];
-                    if (Array.isArray(hashrateData)) {
-                        hashrateArray = hashrateData;
-                    } else if (hashrateData && Array.isArray(hashrateData.data)) {
-                        hashrateArray = hashrateData.data;
-                    }
+                    const hashrateData = await hashrateResponse.json();
 
                     // Check if market data is valid
                     if (!Array.isArray(marketData) || marketData.length === 0) {
                         console.error('Error: Market data from CoinGecko API is invalid.');
-                        showError();
-                        return;
-                    }
-
-                    // Check if blocks data is valid
-                    if (!Array.isArray(blocksData) || blocksData.length === 0) {
-                        console.error('Error: Blocks data from Blockstream API is invalid.');
                         showError();
                         return;
                     }
@@ -323,12 +305,9 @@
                     const marketCapChange = bitcoinData.market_cap_change_percentage_24h;
 
                     // Extract the difficulty from the latest block
-                    const difficulty = blocksData[0].difficulty;
+                    const difficulty = hashrateData.currentDifficulty;
 
-                    // Get the most recent hashrate data for all pools
-                    const poolsData = hashrateArray;
-
-                    const hashrateInHashes = parseFloat(hashrateData) * 1e9; // The API returns Ghash/s, convert to H/s
+                    const hashrateInHashes = hashrateData.currentHashrate; // The API returns Ghash/s, convert to H/s
 
                     // Calculate energy consumption based on projected efficiency for the current year
                     const currentYear = new Date().getFullYear();
