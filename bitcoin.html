@@ -170,6 +170,33 @@
           return reward;
         }
 
+        /**
+         * Calculates the maximum daily energy usage in kilowatt-hours based on a 2% renewable energy limit.
+         *
+         * @returns {number} The maximum recommended daily usage in kilowatt-hours (kWh).
+        */
+        function getMaxDailyUsageKWh() {
+            const startYear = 2024;
+            const initialRenewableEJ = 33;
+            const initialRenewableTWh = initialRenewableEJ * 277.778;
+            const growthRate = 0.08; // 8% growth rate
+
+            const currentYear = new Date().getFullYear();
+            const yearsPassed = currentYear - startYear;
+  
+            // Project renewable energy to the current year
+            let annualRenewableTWh = initialRenewableTWh * Math.pow(1 + growthRate, yearsPassed);
+  
+            const dailyRenewableTWh = annualRenewableTWh / 365.25;
+            const maxDailyUsageTWh = dailyRenewableTWh * 0.02;
+  
+            // Convert TWh to KWh (1 TWh = 1,000,000,000 kWh)
+            const maxDailyUsageKWh = maxDailyUsageTWh * 1000000000;
+
+            // Return true if daily usage exceeds the limit, false otherwise
+            return maxDailyUsageKWh;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             // DOM element references
             const imageContainer = document.getElementById('image-container');
@@ -334,7 +361,7 @@
                 sentimentText.removeAttribute('data-tooltip'); // Clear any existing tooltip
 
                 // Thresholds for sentiment analysis
-                const HIGH_ENERGY_THRESHOLD = 365000000; 
+                const HIGH_ENERGY_THRESHOLD = getMaxDailyUsageKWh(); 
                 const HARD_DIFFICULTY_THRESHOLD = 130; // Less than 130 blocks mined.
                 const DOOMSDAY_DIFFICULTY = 2.06e+67; // A massive, unlikely number for a theoretical "doomsday" scenario
                 
