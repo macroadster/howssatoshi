@@ -1,0 +1,352 @@
+    /**
+     * Projects the ideal energy efficiency of a Bitcoin mining machine for a given year.
+     */
+    function projectMinerEfficiency(targetYear, baseYear = 2025, baseEfficiency = 15) {
+        const KOOMEYS_LAW_HALVING_PERIOD_YEARS = 1.57;
+        const LANDAUER_PHYSICAL_LIMIT_J_TH = 0.0028;
+
+        if (targetYear <= baseYear) {
+            return baseEfficiency;
+        }
+
+        const yearsPassed = targetYear - baseYear;
+        const numDoublingPeriods = yearsPassed / KOOMEYS_LAW_HALVING_PERIOD_YEARS;
+        const projectedEfficiency = baseEfficiency / Math.pow(2, numDoublingPeriods);
+
+        return Math.max(projectedEfficiency, LANDAUER_PHYSICAL_LIMIT_J_TH);
+    }
+
+    /**
+     * Calculates the Bitcoin block reward based on a dynamic halving schedule.
+     * This function can calculate the reward for any future date.
+     *
+     * The reward started at 50 BTC and halves approximately every 4 years
+     * (or precisely, every 210,000 blocks).
+     *
+     * @param {Date} currentDate The date for which to calculate the block reward.
+     * @returns {number} The Bitcoin block reward in BTC for the given date.
+     */
+    function getBitcoinBlockRewardForDate(currentDate) {
+      // The initial block reward
+      let reward = 50.0;
+      // The date of the very first block (genesis block)
+      const genesisBlockDate = new Date('2009-01-03');
+      // The number of days between halvings, based on a 10-minute block time
+      // 210,000 blocks * 10 minutes/block = 2,100,000 minutes
+      // 2,100,000 minutes / 60 minutes/hour = 35,000 hours
+      // 35,000 hours / 24 hours/day = ~1458.33 days, which is approximately 4 years
+      const daysBetweenHalvings = 210000 * 10 / (60 * 24);
+
+      // We'll use the known historical dates as a starting point for the calculation.
+      // The first halving was on '2012-11-28'.
+      let halvingDate = new Date('2012-11-28');
+
+      // Loop through halvings, starting from the first one
+      while (currentDate >= halvingDate) {
+        reward /= 2;
+        // Calculate the next halving date by adding the approximate days
+        halvingDate = new Date(halvingDate.getTime() + daysBetweenHalvings * 24 * 60 * 60 * 1000);
+      }
+
+      // Handle the initial period before the first halving
+      if (currentDate < new Date('2012-11-28')) {
+        return 50.0;
+      }
+
+      return reward;
+    }
+
+    /**
+     * Calculates the maximum daily energy usage in kilowatt-hours based on a 2% renewable energy limit.
+     *
+     * @returns {number} The maximum recommended daily usage in kilowatt-hours (kWh).
+    */
+    function getMaxDailyUsageKWh() {
+        const startYear = 2024;
+        const initialRenewableEJ = 33;
+        const initialRenewableTWh = initialRenewableEJ * 277.778;
+        const growthRate = 0.08; // 8% growth rate
+
+        const currentYear = new Date().getFullYear();
+        const yearsPassed = currentYear - startYear;
+
+        // Project renewable energy to the current year
+        let annualRenewableTWh = initialRenewableTWh * Math.pow(1 + growthRate, yearsPassed);
+
+        const dailyRenewableTWh = annualRenewableTWh / 365.25;
+        const maxDailyUsageTWh = dailyRenewableTWh * 0.02;
+
+        // Convert TWh to KWh (1 TWh = 1,000,000,000 kWh)
+        const maxDailyUsageKWh = maxDailyUsageTWh * 1000000000;
+
+        // Return true if daily usage exceeds the limit, false otherwise
+        return maxDailyUsageKWh;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // DOM element references
+        const imageContainer = document.getElementById('image-container');
+        const sentimentText = document.getElementById('sentiment-text');
+        const currentPrice = document.getElementById('current-price');
+        const changePercent = document.getElementById('change-percent');
+        const marketCapElement = document.getElementById('market-cap');
+        const energyUsageElement = document.getElementById('energy-usage');
+        const difficultyTargetElement = document.getElementById('difficulty-target');
+        const dollarsMinedElement = document.getElementById('dollars-mined');
+        const body = document.body;
+
+        // Map of image filenames to their contentFetchId
+        // The file names are now used directly as the source paths.
+        const imageMap = {
+            'Fall.png': 'images/Fall.png',
+            'Fall-0.5.png': 'images/Fall.png',
+            'Fall-0.6.png': 'images/Fall-0.6.png',
+            'Fall-0.7.png': 'images/Fall-0.7.png',
+            'Fall-0.8.png': 'images/Fall-0.8.png',
+            'Fall-0.9.png': 'images/Fall-0.9.png',
+            'Fall-1.0.png': 'images/Fall-1.0.png',
+            'WinterStorm.png': 'images/WinterStorm.png',
+            'NeutralMarket.jpg': 'images/NeutralMarket.jpg',
+            'DoomsDay.png': 'images/DoomsDay.png',
+            'DrySummer.png': 'images/DrySummer.png',
+            'SpringBloom.png': 'images/SpringBloom.png',
+            'SpringBloom-0.5.png': 'images/SpringBloom-0.5.png',
+            'SpringBloom-0.6.png': 'images/SpringBloom-0.6.png',
+            'SpringBloom-0.7.png': 'images/SpringBloom-0.7.png',
+            'SpringBloom-0.8.png': 'images/SpringBloom-0.8.png',
+            'SpringBloom-0.9.png': 'images/SpringBloom-0.9.png',
+            'SpringBloom-1.0.png': 'images/SpringBloom-1.0.png'
+        };
+
+        const changeThresholds = {
+            bullish: [
+                { threshold: 1, image: 'SpringBloom-1.0' },
+                { threshold: 0.9, image: 'SpringBloom-0.9' },
+                { threshold: 0.8, image: 'SpringBloom-0.8' },
+                { threshold: 0.7, image: 'SpringBloom-0.7' },
+                { threshold: 0.6, image: 'SpringBloom-0.6' },
+                { threshold: 0.5, image: 'SpringBloom-0.5' },
+            ],
+            bearish: [
+                { threshold: -1, image: 'Fall-1.0' },
+                { threshold: -0.9, image: 'Fall-0.9' },
+                { threshold: -0.8, image: 'Fall-0.8' },
+                { threshold: -0.7, image: 'Fall-0.7' },
+                { threshold: -0.6, image: 'Fall-0.6' },
+                { threshold: -0.5, image: 'Fall-0.5' }
+            ]
+        };
+
+        // Helper function to get the correct URL for an uploaded file
+        // This now returns just the filename, which works for local files.
+        const getUploadedFileUrl = (filename) => {
+            const fetchId = imageMap[filename];
+            return fetchId;
+        };
+
+        const fetchBitcoinBlocks = async () => {
+            const apiUrl = 'https://api.blockchair.com/bitcoin/stats';
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+
+                // Check if the data structure is as expected
+                if (data.data && data.data.blocks_24h !== undefined) {
+                    const blocksMined = data.data.blocks_24h;
+                    return blocksMined;
+                } else {
+                    throw new Error('Unexpected data format from API');
+                }
+            } catch (error) {
+                console.error('Error fetching Bitcoin block data:', error);
+                errorMessage.textContent = 'Error: ' + error.message;
+                errorMessage.classList.remove('hidden');
+                return 0;
+            }
+        };
+
+        // Helper function to format large numbers to T, B, M, K
+        const formatNumber = (num) => {
+            if (num === null || isNaN(num)) return 'N/A';
+            if (num >= 1000000000000) {
+                return (num / 1000000000000).toFixed(2) + 'T';
+            }
+            if (num >= 1000000000) {
+                return (num / 1000000000).toFixed(2) + 'B';
+            }
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(2) + 'K';
+            }
+            return num.toFixed(2);
+        };
+
+        const today = new Date();
+        const currentBitcoinReward = getBitcoinBlockRewardForDate(today);
+
+        // Function to fetch all required data
+        const fetchData = async () => {
+            try {
+                // Fetch Bitcoin market data from CoinGecko API
+                const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
+                const marketData = await marketResponse.json();
+
+                // Fetch Bitcoin hashrate from a new reliable source (mempool.space)
+                const hashrateResponse = await fetch('https://mempool.space/api/v1/mining/hashrate/3d');
+                if (!hashrateResponse.ok) throw new Error('Failed to fetch hashrate data.');
+                const hashrateData = await hashrateResponse.json();
+
+                // Check if market data is valid
+                if (!Array.isArray(marketData) || marketData.length === 0) {
+                    console.error('Error: Market data from CoinGecko API is invalid.');
+                    showError();
+                    return;
+                }
+
+                const dailyBlocks = await fetchBitcoinBlocks();
+
+                const bitcoinData = marketData[0];
+                const price = bitcoinData.current_price;
+                const marketCap = bitcoinData.market_cap;
+                const change = bitcoinData.price_change_percentage_24h;
+                const marketCapChange = bitcoinData.market_cap_change_percentage_24h;
+
+                // Extract the difficulty from the latest block
+                const difficulty = hashrateData.currentDifficulty;
+
+                const hashrateInHashes = hashrateData.currentHashrate; // The API returns Ghash/s, convert to H/s
+
+                // Calculate energy consumption based on projected efficiency for the current year
+                const currentYear = new Date().getFullYear();
+                const EFFICIENCY_J_PER_TH = projectMinerEfficiency(currentYear);
+
+                // Estimate daily energy consumption based on hashrate and average efficiency
+                const dailyEnergyKwh = (hashrateInHashes * EFFICIENCY_J_PER_TH) / (1e15) * 24; // Convert to kWh/day
+
+                // New metric calculation: blocks/day * price / total power in Watts
+                const dollarsPerKWatt = price * dailyBlocks * currentBitcoinReward / dailyEnergyKwh;
+
+                // Now, update the UI with the fetched and calculated data
+                updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError();
+            }
+        };
+
+        // Function to update the UI based on the fetched data and calculated metrics
+        const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks) => {
+            let sentiment = {};
+            sentimentText.removeAttribute('data-tooltip'); // Clear any existing tooltip
+
+            // Thresholds for sentiment analysis
+            const HIGH_ENERGY_THRESHOLD = getMaxDailyUsageKWh();
+            const HARD_DIFFICULTY_THRESHOLD = 130; // Less than 130 blocks mined.
+            const DOOMSDAY_DIFFICULTY = 2.06e+67; // A massive, unlikely number for a theoretical "doomsday" scenario
+
+            // Priority check: If the market is experiencing a significant change
+            if (dailyBlocks < HARD_DIFFICULTY_THRESHOLD) {
+                sentiment = {
+                    text: 'Need Energy',
+                    color: 'text-gray-400',
+                    image: 'WinterStorm.png',
+                };
+                sentimentText.setAttribute('data-tooltip', 'Network strain: Low block production (<130/day, 9.8% below 144/day target) signals insufficient hashrate, requiring more energy to maintain stable coin minting.');
+            } else if (difficulty > DOOMSDAY_DIFFICULTY) {
+                sentiment = {
+                    text: 'Doom\'s Day',
+                    color: 'text-gray-400',
+                    image: 'DoomsDay.png',
+                };
+                // Add the data attribute for the custom tooltip
+                sentimentText.setAttribute('data-tooltip', 'An excessive difficulty target represents a significant technical challenge for the network. Should it surpass a predetermined doomsday threshold, the limited pool of unique transaction hashes could introduce vulnerabilities, thereby undermining the system\'s ability to process and confirm transactions securely.');
+            } else if (dailyEnergyKwh > HIGH_ENERGY_THRESHOLD) {
+                // Next priority: check for high energy usage based on real-world data
+                sentiment = {
+                    text: 'Working too hard',
+                    color: 'text-orange-400',
+                    image: 'DrySummer.png',
+                };
+                // Add the data attribute for the custom tooltip
+                sentimentText.setAttribute('data-tooltip', 'The economic model of Bitcoin\'s mining process, which issues new currency at predictable intervals, has created highly lucrative rewards for miners. This has led to an intense competition for these rewards, resulting in an expenditure of resources—particularly electricity—that is disproportionate to the system\'s needs and may be detrimental to the global community.');
+            } else if (change > 0.5) {
+                // This is the standard bullish market condition
+                const image = price > 1000000
+                    ? 'SpringBloom.png'
+                    : `${changeThresholds.bullish.find(entry => change > entry.threshold)?.image}.png`;
+                sentiment = {
+                    text: 'Bullish Market',
+                    color: 'text-green-400',
+                    image: image,
+                };
+            } else if (change < -0.5) {
+                const image = `${changeThresholds.bearish.find(entry => change < entry.threshold)?.image}.png`;
+                console.log(image)
+                sentiment = {
+                    text: 'Bearish Market',
+                    color: 'text-red-400',
+                    image: image,
+                };
+            } else {
+                sentiment = {
+                    text: 'Neutral Market',
+                    color: 'text-yellow-400',
+                    image: 'NeutralMarket.jpg',
+                };
+            }
+
+            // Create the image element dynamically and append it
+            const imgElement = document.createElement('img');
+            imgElement.src = getUploadedFileUrl(sentiment.image);
+            imgElement.alt = `Satoshi Nakamoto statue representing a ${sentiment.text} market`;
+            imgElement.className = "w-full h-auto rounded-3xl shadow-2xl transition-transform duration-500 ease-in-out transform hover:scale-105";
+
+            // Clear any existing content and add the new image
+            imageContainer.innerHTML = '';
+            imageContainer.appendChild(imgElement);
+
+            // Update text content and colors
+            sentimentText.textContent = sentiment.text;
+            sentimentText.className = `text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center ${sentiment.color}`;
+
+            currentPrice.textContent = `$${price.toFixed(2)}`;
+            changePercent.textContent = `${change.toFixed(2)}%`;
+            changePercent.className = `text-3xl font-bold ${change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-gray-400'}`;
+
+            // Update market cap, energy usage and difficulty target display
+            marketCapElement.textContent = `$${formatNumber(marketCap)}`;
+            energyUsageElement.textContent = `${(dailyEnergyKwh / 1e6).toFixed(2)} GWh/day`;
+            // Display the difficulty with 'T' for trillion
+            difficultyTargetElement.textContent = formatNumber(difficulty);
+            // Update new metric
+            dollarsMinedElement.textContent = `$${dollarsPerKWatt.toFixed(4)}`;
+        };
+
+        // Function to handle errors
+        const showError = () => {
+            imageContainer.innerHTML = `<div class="text-center">Failed to fetch data. Check your network connection.</div>`;
+            sentimentText.textContent = "Error";
+            sentimentText.className = "text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center text-red-500";
+            currentPrice.textContent = "N/A";
+            changePercent.textContent = "N/A";
+            marketCapElement.textContent = "N/A";
+            energyUsageElement.textContent = "N/A";
+            difficultyTargetElement.textContent = "N/A";
+            dollarsMinedElement.textContent = "N/A";
+            body.classList.add('bg-gray-900');
+            body.classList.remove('bg-gradient-to-r', 'from-rose-400', 'via-fuchsia-500', 'to-indigo-500');
+        };
+
+        // Initial fetch on page load
+        fetchData();
+
+        // Set up an interval to refresh the data every 60 seconds
+        setInterval(fetchData, 60000);
+    });
