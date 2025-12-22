@@ -145,27 +145,29 @@
         };
 
         const fetchBitcoinBlocks = async () => {
-            const apiUrl = 'https://api.blockchair.com/bitcoin/stats';
-
             try {
-                const response = await fetch(apiUrl);
+                // Get recent blocks from mempool.space
+                const response = await fetch('https://mempool.space/api/v1/blocks');
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
-                const data = await response.json();
-
-                // Check if the data structure is as expected
-                if (data.data && data.data.blocks_24h !== undefined) {
-                    const blocksMined = data.data.blocks_24h;
-                    return blocksMined;
-                } else {
-                    throw new Error('Unexpected data format from API');
-                }
+                const blocks = await response.json();
+                
+                // Calculate 24 hours ago in Unix timestamp
+                const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+                
+                // Count blocks from the last 24 hours
+                const blocksIn24h = blocks.filter(block => {
+                    // Convert block timestamp (seconds) to milliseconds
+                    const blockTime = block.timestamp * 1000;
+                    return blockTime >= twentyFourHoursAgo;
+                }).length;
+                
+                return blocksIn24h;
             } catch (error) {
-                console.error('Error fetching Bitcoin block data:', error);
-                errorMessage.textContent = 'Error: ' + error.message;
-                errorMessage.classList.remove('hidden');
-                return 0;
+                console.error('Error fetching block data from mempool.space:', error);
+                // Fallback: Bitcoin aims for 144 blocks per day (6 blocks per hour * 24 hours)
+                return 144;
             }
         };
 
