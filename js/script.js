@@ -146,23 +146,45 @@
 
         const fetchBitcoinBlocks = async () => {
             try {
-                // Get recent blocks from mempool.space
-                const response = await fetch('https://mempool.space/api/v1/blocks');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const blocks = await response.json();
+                // Get current block height
+                const heightResponse = await fetch('https://mempool.space/api/blocks/tip/height');
+                if (!heightResponse.ok) throw new Error('Failed to fetch block height');
+                const currentHeight = await heightResponse.json();
                 
-                // Calculate 24 hours ago in Unix timestamp
-                const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
+                // Get the tip block hash (returns text/plain, not JSON)
+                const tipHashResponse = await fetch('https://mempool.space/api/blocks/tip/hash');
+                if (!tipHashResponse.ok) throw new Error('Failed to fetch tip hash');
+                const tipHash = await tipHashResponse.text();
                 
-                // Count blocks from the last 24 hours
-                const blocksIn24h = blocks.filter(block => {
-                    // Convert block timestamp (seconds) to milliseconds
-                    const blockTime = block.timestamp * 1000;
-                    return blockTime >= twentyFourHoursAgo;
-                }).length;
+                // Get the tip block timestamp
+                const tipBlockResponse = await fetch(`https://mempool.space/api/block/${tipHash}`);
+                if (!tipBlockResponse.ok) throw new Error('Failed to fetch tip block');
+                const tipBlock = await tipBlockResponse.json();
+                const tipTimestamp = tipBlock.timestamp;
                 
+                // Estimate block 144 blocks ago (approximately 24 hours)
+                const estimatedHeight = currentHeight - 144;
+                if (estimatedHeight < 0) return 144;
+                
+                // Get that block's hash (returns text/plain)
+                const heightHashResponse = await fetch(`https://mempool.space/api/block-height/${estimatedHeight}`);
+                if (!heightHashResponse.ok) throw new Error('Failed to fetch block height hash');
+                const estimatedHash = await heightHashResponse.text();
+                
+                // Get that block's details
+                const estimatedBlockResponse = await fetch(`https://mempool.space/api/block/${estimatedHash}`);
+                if (!estimatedBlockResponse.ok) throw new Error('Failed to fetch estimated block');
+                const estimatedBlock = await estimatedBlockResponse.json();
+                
+                // Calculate how many seconds that block was from 24 hours ago
+                const twentyFourHoursAgo = tipTimestamp - (24 * 60 * 60);
+                const timeDiff = estimatedBlock.timestamp - twentyFourHoursAgo;
+                
+                // Each block is ~600 seconds, so adjust the count accordingly
+                const blockAdjustment = Math.round(timeDiff / 600);
+                const blocksIn24h = 144 + blockAdjustment;
+                
+                console.log(`Estimated blocks in 24h: ${blocksIn24h} (adjustment: ${blockAdjustment})`);
                 return blocksIn24h;
             } catch (error) {
                 console.error('Error fetching block data from mempool.space:', error);
