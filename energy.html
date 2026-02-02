@@ -4,37 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Satoshi Nakamoto Market Sentiment</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@howssatoshi/quantumcss@latest">
     <style>
-        /* Custom font for a clean, modern look */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
         body {
             font-family: 'Inter', sans-serif;
-            transition: background-color 0.5s ease;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #08081a 100%);
+            height: 100vh;
+            margin: 0;
         }
 
-        /* Custom Tooltip Styling */
-        #sentiment-text[data-tooltip]::before,
-        #sentiment-text[data-tooltip]::after {
-            position: absolute;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-            pointer-events: none;
+        .main-container {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
+        .main-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .main-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .main-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        a {
+            color: #00d4ff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        a:hover {
+            color: #ffb38a;
+            text-shadow: 0 0 10px rgba(255, 179, 138, 0.3);
+        }
+
+        p {
+            line-height: 1.7;
+            color: #e2e8f0;
+            margin-bottom: 1.5rem;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-8">
+<body class="text-gray-100 m-0">
 
-    <div class="bg-gray-800 p-6 rounded-3xl shadow-2xl w-full">
+    <div class="main-container p-4 sm:p-6 flex items-center">
+        <div class="starlight-card p-8 max-w-3xl mx-auto w-full">
         <p>The energy usage of the Bitcoin network is estimated through a sophisticated model, rather than being a direct measurement from a power meter. This approach relies on two key factors: the amount of "work" the network is doing and the efficiency of the mining equipment.</p><br>
 
         <p>The total "work" is measured by the hashrate, which represents the collective computational power of all the computers that are mining Bitcoin around the world. As the network's hashrate increases, so does the amount of work being done. To translate this workload into energy consumption, a projected efficiency is applied, which accounts for the fact that mining hardware becomes more powerful and energy-efficient over time.</p><br>
 
         <p>By combining the total work being performed with the estimated efficiency of the machines doing that work, a reliable estimate of the network's energy footprint can be calculated.</p><br>
 
-        <br><center><a href="bitcoin.html">Back</a></center>
+        <br><center><a href="bitcoin.html">← Back</a></center>
+        </div>
     </div>
 
 </body>

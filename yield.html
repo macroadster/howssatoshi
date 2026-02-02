@@ -4,37 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Satoshi Nakamoto Market Sentiment</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@howssatoshi/quantumcss@latest">
     <style>
-        /* Custom font for a clean, modern look */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
         body {
             font-family: 'Inter', sans-serif;
-            transition: background-color 0.5s ease;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #08081a 100%);
+            height: 100vh;
+            margin: 0;
         }
 
-        /* Custom Tooltip Styling */
-        #sentiment-text[data-tooltip]::before,
-        #sentiment-text[data-tooltip]::after {
-            position: absolute;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-            pointer-events: none;
+        .main-container {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
+        .main-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .main-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .main-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        a {
+            color: #00d4ff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        a:hover {
+            color: #ffb38a;
+            text-shadow: 0 0 10px rgba(255, 179, 138, 0.3);
+        }
+
+        p {
+            line-height: 1.7;
+            color: #e2e8f0;
+            margin-bottom: 1.5rem;
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-8">
+<body class="text-gray-100 m-0">
 
-    <div class="bg-gray-800 p-6 rounded-3xl shadow-2xl w-full">
+    <div class="main-container p-4 sm:p-6 flex items-center">
+        <div class="starlight-card p-8 max-w-3xl mx-auto w-full">
         <p>Imagine Bitcoin's network is a massive factory. This factory's job is to create new bitcoins and process transactions. The "Dollars Yield Per kWh" is a way of measuring how much value that factory produces for every unit of electricity it consumes.</p><br>
 
         <p>It takes the total dollar value of all the new bitcoins produced in a day and divides it by the total amount of energy used by all the computers in the network during that same period.</p><br>
 
         <p>This metric helps us understand the "return on energy" for Bitcoin. A higher number means that the network is generating more dollar value for each unit of power it uses. It's a way to think about the economic efficiency of the system, separate from traditional financial metrics like market capitalization.</p>
 
-        <br><center><a href="bitcoin.html">Back</a></center>
+        <br><center><a href="bitcoin.html">← Back</a></center>
+        </div>
     </div>
 
 </body>

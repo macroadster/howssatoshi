@@ -1,19 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Satoshi Nakamoto Market Sentiment</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@howssatoshi/quantumcss@latest">
     <style>
-        /* Custom font for a clean, modern look */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.5s ease;
+        
+        html, body {
+            background-color: #08081a !important;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
         }
 
-        /* Custom Tooltip Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #08081a 100%) no-repeat center center fixed !important;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Star Twinkle Effect */
+        .stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle var(--duration) infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        .main-container {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Custom scrollbar matching Quantum CSS aesthetic */
+        .main-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .main-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .main-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        #image-container {
+            max-height: 47.25vh;
+            width: auto;
+            aspect-ratio: 864 / 1184;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        #image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Stats card width matching image container */
+        .stats-card-container {
+            width: 0;
+            min-width: 100%;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
         #sentiment-text[data-tooltip]::before,
         #sentiment-text[data-tooltip]::after {
             position: absolute;
@@ -21,13 +109,14 @@
             opacity: 0;
             transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
             pointer-events: none;
+            z-index: 50;
         }
 
         #sentiment-text[data-tooltip]::before {
             content: '';
             border-style: solid;
             border-width: 8px 8px 0 8px;
-            border-color: #4a5568 transparent transparent transparent;
+            border-color: rgba(0, 212, 255, 0.8) transparent transparent transparent;
             bottom: -8px;
             left: 50%;
             transform: translateX(-50%);
@@ -35,16 +124,20 @@
 
         #sentiment-text[data-tooltip]::after {
             content: attr(data-tooltip);
-            background-color: #4a5568;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
             color: #fff;
             padding: 8px 12px;
-            border-radius: 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
             bottom: -16px;
             left: 50%;
             transform: translateX(-50%);
-            max-width: 400px; /* Increased max-width for better text wrapping */
+            max-width: 320px;
             text-align: center;
-            font-size: 0.875rem;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
         }
 
         #sentiment-text:hover[data-tooltip]::before,
@@ -57,60 +150,105 @@
             cursor: help;
         }
 
+        a {
+            color: #00d4ff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        a:hover {
+            color: #ffb38a;
+            text-shadow: 0 0 10px rgba(255, 179, 138, 0.3);
+        }
+
+        /* Color utilities */
+        .text-green-400 { color: #4ade80 !important; }
+        .text-red-400 { color: #f87171 !important; }
+        .text-blue-400 { color: #60a5fa !important; }
+        .text-yellow-300 { color: #fde047 !important; }
+        .text-orange-400 { color: #fb923c !important; }
+        .text-gray-400 { color: #9ca3af !important; }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 flex items-center justify-center min-h-screen p-4 sm:p-8">
+<body class="text-gray-100 m-0">
 
-    <div class="flex flex-col items-center max-w-lg w-full">
-        <div id="image-container" class="w-full h-96 sm:h-[600px] rounded-3xl animate-pulse flex items-center justify-center text-lg text-gray-400 mb-6 bg-gray-800">
-            Loading...
-        </div>
+    <div class="stars-container" id="stars"></div>
 
-        <div class="bg-gray-800 p-6 rounded-3xl shadow-2xl w-full text-center">
-            <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">
-                Bitcoin Market Sentiment
-            </h2>
-            <h2 id="sentiment-text" class="text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center">Loading...</h2>
-
-            <div class="grid grid-cols-2 gap-4 text-sm sm:text-base mb-6">
-                <div class="flex flex-col items-center">
-                    <span class="text-gray-400 font-semibold">Bitcoin Price</span>
-                    <span id="current-price" class="text-2xl sm:text-3xl font-extrabold text-blue-400 mt-1">...</span>
-                </div>
-                <div class="flex flex-col items-center">
-                    <span class="text-gray-400 font-semibold">24h Change</span>
-                    <span id="change-percent" class="text-xl sm:text-2xl font-bold mt-1">...</span>
-                </div>
+    <div class="main-container p-4">
+        <div class="flex flex-col items-center mx-auto w-fit max-w-full">
+            <div id="image-container" class="animate-pulse text-sm text-gray-400 mb-4 bg-gray-800/30 glow-blue">
+                Loading...
             </div>
 
-            <div class="grid grid-cols-2 gap-4 text-sm sm:text-base mb-4">
-                <div class="flex flex-col items-center">
-                    <span class="text-gray-400 font-semibold"><a href="marketcap.html">Market Cap</a></span>
-                    <span id="market-cap" class="text-lg sm:text-xl font-bold mt-1">...</span>
-                </div>
-                <div class="flex flex-col items-center">
-                    <span class="text-gray-400 font-semibold"><a href="energy.html">Energy Usage</a></span>
-                    <span id="energy-usage" class="text-lg sm:text-xl font-bold text-yellow-300 mt-1">...</span>
+            <div class="stats-card-container">
+                <div class="starlight-card px-3 py-4 w-full text-center">
+                    <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight mb-1 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                        Bitcoin Market Sentiment
+                    </h2>
+                    <h2 id="sentiment-text" class="text-base sm:text-lg font-bold mb-4 flex items-center justify-center relative">Loading...</h2>
+
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3">
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label">Bitcoin Price</span>
+                            <span id="current-price" class="text-lg sm:text-xl font-extrabold text-blue-400 mt-0.5">...</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label">24h Change</span>
+                            <span id="change-percent" class="text-base sm:text-lg font-bold mt-0.5">...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3">
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a href="marketcap.html">Market Cap</a></span>
+                            <span id="market-cap" class="text-sm sm:text-base font-bold mt-0.5">...</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a href="energy.html">Energy Usage</a></span>
+                            <span id="energy-usage" class="text-sm sm:text-base font-bold text-yellow-300 mt-0.5">...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3">
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a href="difficulty.html">Difficulty Target</a></span>
+                            <span id="difficulty-target" class="text-sm sm:text-base font-bold mt-0.5">...</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a href="yield.html">Dollars Yield Per kWh</a></span>
+                            <span id="dollars-mined" class="text-sm sm:text-base font-bold text-green-400 mt-0.5">...</span>
+                        </div>
+                    </div>
+
+
                 </div>
             </div>
-
-            <div class="grid grid-cols-2 gap-4 text-sm sm:text-base mb-4">
-                <div class="flex flex-col items-center">
-                    <span class="text-gray-400 font-semibold"><a href="difficulty.html">Difficulty Target</a></span>
-                    <span id="difficulty-target" class="text-lg sm:text-xl font-bold mt-1">...</span>
-                </div>
-                <div class="flex flex-col items-center">
-                    <span class="text-gray-400 font-semibold"><a href="yield.html">Dollars Yield Per kWh</a></span>
-                    <span id="dollars-mined" class="text-lg sm:text-xl font-bold text-green-400 mt-1">...</span>
-                </div>
-            </div>
-
-            <div class="mt-6 text-xs sm:text-sm text-gray-500">
-                Data refreshed every 60 seconds.
-            </div>
-
         </div>
     </div>
+    <script>
+        function createStars() {
+            const container = document.getElementById('stars');
+            const starCount = 100;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                const size = Math.random() * 2;
+                const duration = 2 + Math.random() * 4;
+                const delay = Math.random() * 5;
+                
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--duration', `${duration}s`);
+                star.style.animationDelay = `${delay}s`;
+                
+                container.appendChild(star);
+            }
+        }
+        createStars();
+    </script>
     <script src="js/script.js"></script>
 </body>
 </html>

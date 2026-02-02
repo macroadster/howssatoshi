@@ -330,7 +330,7 @@
             const imgElement = document.createElement('img');
             imgElement.src = getUploadedFileUrl(sentiment.image);
             imgElement.alt = `Satoshi Nakamoto statue representing a ${sentiment.text} market`;
-            imgElement.className = "w-full h-auto rounded-3xl shadow-2xl transition-transform duration-500 ease-in-out transform hover:scale-105";
+            imgElement.className = "w-full h-auto transition-transform duration-700 ease-in-out transform hover:scale-105";
 
             // Clear any existing content and add the new image
             imageContainer.innerHTML = '';
@@ -338,19 +338,24 @@
 
             // Update text content and colors
             sentimentText.textContent = sentiment.text;
-            sentimentText.className = `text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center ${sentiment.color}`;
+            sentimentText.className = `text-xl sm:text-2xl font-bold mb-4 flex items-center justify-center relative ${sentiment.color}`;
 
             currentPrice.textContent = `$${price.toFixed(2)}`;
             changePercent.textContent = `${change.toFixed(2)}%`;
-            changePercent.className = `text-3xl font-bold ${change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-gray-400'}`;
+            changePercent.className = `text-lg sm:text-xl font-extrabold ${change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-gray-400'}`;
 
             // Update market cap, energy usage and difficulty target display
             marketCapElement.textContent = `$${formatNumber(marketCap)}`;
+            
             energyUsageElement.textContent = `${(dailyEnergyKwh / 1e6).toFixed(2)} GWh/day`;
+            energyUsageElement.className = `text-sm sm:text-base font-bold mt-0.5 ${dailyEnergyKwh > HIGH_ENERGY_THRESHOLD ? 'text-red-400' : 'text-yellow-300'}`;
+
             // Display the difficulty with 'T' for trillion
             difficultyTargetElement.textContent = formatNumber(difficulty);
+            
             // Update new metric
             dollarsMinedElement.textContent = `$${dollarsPerKWatt.toFixed(4)}`;
+            dollarsMinedElement.className = `text-sm sm:text-base font-bold mt-0.5 ${dollarsPerKWatt > 0.05 ? 'text-green-400' : 'text-orange-400'}`;
         };
 
         // Function to handle errors
