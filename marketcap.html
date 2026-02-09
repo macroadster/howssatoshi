@@ -11,12 +11,12 @@
         body {
             font-family: 'Inter', sans-serif;
             background: radial-gradient(circle at center, #1a1a2e 0%, #08081a 100%);
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
         }
 
         .main-container {
-            height: 100vh;
+            min-height: 100vh;
             overflow-y: auto;
             overflow-x: hidden;
         }
@@ -66,8 +66,8 @@
 </head>
 <body class="text-gray-100 m-0">
 
-    <div class="main-container p-4 sm:p-6 flex items-center">
-        <div class="starlight-card p-8 max-w-3xl mx-auto w-full">
+    <div class="main-container p-4 sm:p-6">
+        <div class="starlight-card p-8 max-w-3xl mx-auto w-full my-8">
         <p>The relationship between Bitcoin's difficulty target and its market cap (price) is best described as a <b>causal, but lagged, correlation where the market cap is the primary driver.</b></p>
         <p>Here's a breakdown of that dynamic relationship:</p><br>
 
