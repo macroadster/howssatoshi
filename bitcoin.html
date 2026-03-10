@@ -219,11 +219,26 @@
                         </div>
                     </div>
 
+                    <!-- Timeline Player UI -->
+                    <div id="timeline-container" class="mt-6 pt-4 border-t border-gray-700/50 hidden">
+                        <div class="flex flex-col space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="stat-label">Timeline Player</span>
+                                <span id="timeline-date" class="text-[10px] text-blue-400 font-bold">Live</span>
+                            </div>
+                            <input type="range" id="timeline-slider" min="0" max="0" value="0" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                            <div class="flex justify-center space-x-4">
+                                <button id="play-pause-btn" class="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors">PLAY</button>
+                                <button id="live-btn" class="text-xs font-bold text-gray-400 hover:text-white transition-colors">LIVE</button>
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
             </div>
         </div>
     </div>
+    <script src="https://sql.js.org/dist/sql-wasm.js"></script>
     <script>
         function createStars() {
             const container = document.getElementById('stars');

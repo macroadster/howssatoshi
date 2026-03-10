@@ -83,7 +83,145 @@
         return maxDailyUsageKWh;
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        // SQL.js integration
+        let SQL;
+        let db;
+        const timelineContainer = document.getElementById('timeline-container');
+        const timelineSlider = document.getElementById('timeline-slider');
+        const timelineDate = document.getElementById('timeline-date');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const liveBtn = document.getElementById('live-btn');
+        let isLive = true;
+        let playInterval = null;
+
+        const initDB = async () => {
+            try {
+                const config = {
+                    locateFile: filename => `https://sql.js.org/dist/${filename}`
+                };
+                SQL = await initSqlJs(config);
+                
+                const savedDB = localStorage.getItem('bitcoin_sentiment_db');
+                if (savedDB) {
+                    const binaryString = atob(savedDB);
+                    const uint8Array = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        uint8Array[i] = binaryString.charCodeAt(i);
+                    }
+                    db = new SQL.Database(uint8Array);
+                } else {
+                    db = new SQL.Database();
+                    db.run(`CREATE TABLE IF NOT EXISTS snapshots (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp INTEGER,
+                        price REAL,
+                        market_cap REAL,
+                        change REAL,
+                        market_cap_change REAL,
+                        daily_energy_kwh REAL,
+                        difficulty REAL,
+                        dollars_mined REAL,
+                        daily_blocks INTEGER
+                    )`);
+                }
+                updateTimeline();
+            } catch (err) {
+                console.error("Failed to initialize database:", err);
+            }
+        };
+
+        const saveSnapshot = (price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsMined, dailyBlocks) => {
+            if (!db) return;
+            const timestamp = Math.floor(Date.now() / 1000);
+            db.run(`INSERT INTO snapshots (timestamp, price, market_cap, change, market_cap_change, daily_energy_kwh, difficulty, dollars_mined, daily_blocks) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+                    [timestamp, price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsMined, dailyBlocks]);
+            
+            // Persist to localStorage
+            const data = db.export();
+            let binary = "";
+            const len = data.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(data[i]);
+            }
+            localStorage.setItem('bitcoin_sentiment_db', btoa(binary));
+            
+            if (isLive) {
+                updateTimeline();
+            }
+        };
+
+        const updateTimeline = () => {
+            if (!db) return;
+            const res = db.exec("SELECT COUNT(*) FROM snapshots");
+            const count = res[0].values[0][0];
+            if (count > 0) {
+                timelineContainer.classList.remove('hidden');
+                timelineSlider.max = count - 1;
+                if (isLive) {
+                    timelineSlider.value = count - 1;
+                }
+            }
+        };
+
+        const loadSnapshot = (index) => {
+            if (!db) return;
+            const res = db.exec(`SELECT * FROM snapshots LIMIT 1 OFFSET ${index}`);
+            if (res.length > 0 && res[0].values.length > 0) {
+                const row = res[0].values[0];
+                const [id, timestamp, price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsMined, dailyBlocks] = row;
+                
+                const date = new Date(timestamp * 1000);
+                timelineDate.textContent = date.toLocaleString();
+                
+                updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsMined, dailyBlocks, false);
+            }
+        };
+
+        timelineSlider.addEventListener('input', (e) => {
+            isLive = false;
+            liveBtn.classList.remove('text-blue-400');
+            liveBtn.classList.add('text-gray-400');
+            loadSnapshot(e.target.value);
+        });
+
+        liveBtn.addEventListener('click', () => {
+            isLive = true;
+            liveBtn.classList.add('text-blue-400');
+            liveBtn.classList.remove('text-gray-400');
+            timelineDate.textContent = 'Live';
+            fetchData();
+            updateTimeline();
+        });
+
+        playPauseBtn.addEventListener('click', () => {
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+                playPauseBtn.textContent = 'PLAY';
+            } else {
+                isLive = false;
+                liveBtn.classList.remove('text-blue-400');
+                liveBtn.classList.add('text-gray-400');
+                playPauseBtn.textContent = 'PAUSE';
+                playInterval = setInterval(() => {
+                    let val = parseInt(timelineSlider.value);
+                    if (val < parseInt(timelineSlider.max)) {
+                        val++;
+                        timelineSlider.value = val;
+                        loadSnapshot(val);
+                    } else {
+                        clearInterval(playInterval);
+                        playInterval = null;
+                        playPauseBtn.textContent = 'PLAY';
+                    }
+                }, 500);
+            }
+        });
+
+        await initDB();
+
         // DOM element references
         const imageContainer = document.getElementById('image-container');
         const sentimentText = document.getElementById('sentiment-text');
@@ -257,7 +395,7 @@
                 const dollarsPerKWatt = price * dailyBlocks * currentBitcoinReward / dailyEnergyKwh;
 
                 // Now, update the UI with the fetched and calculated data
-                updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks);
+                updateUI(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks, true);
 
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -266,7 +404,11 @@
         };
 
         // Function to update the UI based on the fetched data and calculated metrics
-        const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks) => {
+        const updateUI = (price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks, isNewData = false) => {
+            if (isNewData && isLive) {
+                saveSnapshot(price, marketCap, change, marketCapChange, dailyEnergyKwh, difficulty, dollarsPerKWatt, dailyBlocks);
+            }
+
             let sentiment = {};
             sentimentText.removeAttribute('data-tooltip'); // Clear any existing tooltip
 
