@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLAKE2b Hard Fork Monitor</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@howssatoshi/quantumcss@latest">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+        html, body {
+            background-color: #08081a !important;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #08081a 100%) no-repeat center center fixed !important;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: twinkle var(--duration) infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        .main-container {
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .main-container::-webkit-scrollbar { width: 6px; }
+        .main-container::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+        .main-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .chain-switch {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1rem 0 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .chain-switch a {
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            color: #94a3b8;
+        }
+
+        .chain-switch a.active {
+            color: #08081a;
+            background: #00d4ff;
+            border-color: #00d4ff;
+        }
+
+        #image-container {
+            height: 36vh;
+            width: auto;
+            aspect-ratio: 864 / 1184;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        #image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .stats-card-container {
+            width: 0;
+            min-width: 100%;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        #sentiment-text[data-tooltip]::before,
+        #sentiment-text[data-tooltip]::after {
+            position: absolute;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        #sentiment-text[data-tooltip]::before {
+            content: '';
+            border-style: solid;
+            border-width: 8px 8px 0 8px;
+            border-color: rgba(0, 212, 255, 0.8) transparent transparent transparent;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #sentiment-text[data-tooltip]::after {
+            content: attr(data-tooltip);
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            bottom: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 320px;
+            text-align: center;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+
+        #sentiment-text:hover[data-tooltip]::before,
+        #sentiment-text:hover[data-tooltip]::after {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        #sentiment-text:hover { cursor: help; }
+
+        a {
+            color: #00d4ff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        a:hover {
+            color: #ffb38a;
+            text-shadow: 0 0 10px rgba(255, 179, 138, 0.3);
+        }
+
+        .text-green-400 { color: #4ade80 !important; }
+        .text-red-400 { color: #f87171 !important; }
+        .text-blue-400 { color: #60a5fa !important; }
+        .text-yellow-300 { color: #fde047 !important; }
+        .text-orange-400 { color: #fb923c !important; }
+        .text-gray-400 { color: #9ca3af !important; }
+
+        .meter {
+            width: 100%;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.2);
+            overflow: hidden;
+        }
+
+        .meter > span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #ffb38a);
+            border-radius: 999px;
+        }
+
+        .pool-row, .block-row {
+            display: grid;
+            gap: 0.25rem 0.6rem;
+            align-items: center;
+            font-size: 0.75rem;
+        }
+
+        .pool-row {
+            grid-template-columns: minmax(0, 1fr) auto;
+            margin-bottom: 0.55rem;
+        }
+
+        .pool-row a {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .block-row {
+            grid-template-columns: auto minmax(0, 1fr) auto auto;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .block-meta {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pool-bar {
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.2);
+            overflow: hidden;
+        }
+
+        .pool-bar > span {
+            display: block;
+            height: 100%;
+            background: #00d4ff;
+        }
+
+        .compare-track {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 0.5rem;
+            align-items: end;
+            margin-top: 0.35rem;
+        }
+
+        .compare-col {
+            text-align: center;
+        }
+
+        .compare-bar {
+            margin: 0.35rem auto 0;
+            width: 18px;
+            max-height: 72px;
+            border-radius: 999px;
+            background: rgba(0, 212, 255, 0.85);
+        }
+
+        .compare-bar.sha {
+            background: rgba(148, 163, 184, 0.7);
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin: 1rem 0 0.5rem;
+            text-align: left;
+        }
+
+        .live-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 8px #4ade80;
+            margin-right: 0.35rem;
+        }
+
+        .live-dot.stale { background: #f87171; box-shadow: 0 0 8px #f87171; }
+
+        @media (max-width: 639px) {
+            #image-container { height: 28vh; }
+            .block-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+            .block-weight { display: none; }
+        }
+    </style>
+</head>
+<body class="text-gray-100 m-0">
+
+    <div class="stars-container ani-nebula" id="stars"></div>
+
+    <div class="main-container p-4">
+        <div class="flex flex-col items-center mx-auto w-fit max-w-full" style="max-width: 28rem;">
+            <nav class="chain-switch" aria-label="Chain">
+                <a href="bitcoin.html">SHA256d</a>
+                <a href="blake2b.html" class="active" aria-current="page">BLAKE2b</a>
+            </nav>
+
+            <div id="image-container" class="animate-pulse text-sm text-gray-400 mb-4 bg-gray-800/30 glow-blue">
+                Loading...
+            </div>
+
+            <div class="stats-card-container">
+                <div class="starlight-card px-3 py-4 w-full text-center">
+                    <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight mb-1 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
+                        BLAKE2b Hard Fork
+                    </h1>
+                    <h2 id="sentiment-text" class="text-base sm:text-lg font-bold mb-1 flex items-center justify-center relative">Loading...</h2>
+                    <p class="text-xs text-gray-400 mb-4">
+                        <span id="live-indicator" class="live-dot"></span>
+                        Live from <a href="https://mempool.guide/" target="_blank" rel="noopener">mempool.guide</a>
+                        · <span id="updated-at">fetching</span>
+                    </p>
+
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3">
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a id="height-link" href="https://mempool.guide/" target="_blank" rel="noopener">Tip Height</a></span>
+                            <span id="tip-height" class="text-lg sm:text-xl font-extrabold text-blue-400 mt-0.5">...</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label">vs SHA256d</span>
+                            <span id="height-delta" class="text-base sm:text-lg font-bold mt-0.5">...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3">
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">Hashrate</a></span>
+                            <span id="hashrate" class="text-sm sm:text-base font-bold mt-0.5">...</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a href="energy.html">Energy Usage</a></span>
+                            <span id="energy-usage" class="text-sm sm:text-base font-bold text-yellow-300 mt-0.5">...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3">
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label"><a href="difficulty.html">Difficulty</a></span>
+                            <span id="difficulty-target" class="text-sm sm:text-base font-bold mt-0.5">...</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="stat-label">Block Interval</span>
+                            <span id="block-interval" class="text-sm sm:text-base font-bold text-green-400 mt-0.5">...</span>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Fork clock</div>
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-3 mb-3 text-left">
+                        <div>
+                            <div class="stat-label">Since 961640</div>
+                            <div id="blocks-since-fork" class="text-sm font-bold">...</div>
+                            <div id="fork-age" class="text-xs text-gray-400">30 Aug 2026</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">RDTS limit</div>
+                            <div id="rdts-status" class="text-sm font-bold">800k WU</div>
+                            <div id="rdts-eta" class="text-xs text-gray-400">until 1 Sep 2027</div>
+                        </div>
+                    </div>
+
+                    <div class="text-left mb-3">
+                        <div class="flex justify-between items-center">
+                            <span class="stat-label">Next retarget</span>
+                            <span id="retarget-label" class="text-xs text-blue-400 font-bold">...</span>
+                        </div>
+                        <div class="meter mt-1" aria-hidden="true"><span id="retarget-bar" style="width: 0%"></span></div>
+                        <div id="retarget-detail" class="text-xs text-gray-400 mt-1">...</div>
+                    </div>
+
+                    <div class="section-title">Chain split</div>
+                    <div class="compare-track" aria-hidden="true">
+                        <div class="compare-col">
+                            <div class="stat-label">BLAKE2b</div>
+                            <div id="compare-blake-height" class="text-xs font-bold text-blue-400">...</div>
+                            <div id="compare-blake-bar" class="compare-bar" style="height: 48px;"></div>
+                        </div>
+                        <div class="text-xs text-gray-400 pb-2">height</div>
+                        <div class="compare-col">
+                            <div class="stat-label">SHA256d</div>
+                            <div id="compare-sha-height" class="text-xs font-bold text-gray-400">...</div>
+                            <div id="compare-sha-bar" class="compare-bar sha" style="height: 36px;"></div>
+                        </div>
+                    </div>
+                    <p id="split-note" class="text-xs text-gray-400 mt-2 mb-0">
+                        Split at height 961640. SHA256d tip from mempool.space.
+                    </p>
+
+                    <div class="section-title">Mempool</div>
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <div>
+                            <div class="stat-label">Txns</div>
+                            <div id="mempool-count" class="text-sm font-bold">...</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">vSize</div>
+                            <div id="mempool-vsize" class="text-sm font-bold">...</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Fee</div>
+                            <div id="mempool-fee" class="text-sm font-bold">...</div>
+                        </div>
+                    </div>
+
+                    <div class="section-title"><a href="https://mempool.guide/graphs/mining/pools" target="_blank" rel="noopener">Pools · 7d</a></div>
+                    <div id="pools-list">Loading pools...</div>
+
+                    <div class="section-title">Recent blocks</div>
+                    <div id="blocks-list">Loading blocks...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function createStars() {
+            const container = document.getElementById('stars');
+            const starCount = 100;
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                const size = Math.random() * 2;
+                const duration = 2 + Math.random() * 4;
+                const delay = Math.random() * 5;
+
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--duration', `${duration}s`);
+                star.style.animationDelay = `${delay}s`;
+
+                container.appendChild(star);
+            }
+        }
+        createStars();
+    </script>
+    <script src="js/blake2b.js"></script>
+</body>
+</html>

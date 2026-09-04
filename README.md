@@ -22,7 +22,9 @@ A real-time Bitcoin sentiment tracker visualizing market and network health via 
 - **Scalable**: Supports miner automation.
 
 ## Project Structure
-- `bitcoin.html`: Core app (HTML, JS, ~10 KB).
+- `bitcoin.html`: Core SHA256d app (HTML, JS, ~10 KB).
+- `blake2b.html`: Parallel BLAKE2b hard-fork monitor (mempool.guide).
+- `js/blake2b.js`: Fork metrics, SHA256d comparison, pools, recent blocks.
 - `energy.html`: Energy usage (~500 B).
 - `difficulty.html`: Difficulty’s role (~1.2 KB).
 - `yield.html`: Dollars per kWh (~800 B).
@@ -30,11 +32,12 @@ A real-time Bitcoin sentiment tracker visualizing market and network health via 
 - `/images/`: 12 sentiment visuals.
 
 ## How It Works
-`bitcoin.html` fetches data from CoinGecko (market), mempool.space (network), and Blockchair (blocks) to compute sentiment and metrics:
-- **Calculations**:
-  - Block reward: 3.125 BTC (2025) + ~0.7 BTC fees.
-  - Energy: `hashrate * efficiency / 1e15 * 24` (~374 GWh/day).
-  - Dollars per kWh: `(price * dailyBlocks * reward) / energy_kwh` (~$0.16/kWh).
+`bitcoin.html` fetches data from CoinGecko (market) and mempool.space (network) to compute sentiment and metrics. `blake2b.html` is the parallel for the BLAKE2b chain: it reads live height, hashrate, difficulty, mempool, pools, and blocks from [mempool.guide](https://mempool.guide) and compares tip height with SHA256d Bitcoin on mempool.space. The fork activated at height 961640 (30 August 2026). There is no listed market price, so that page tracks chain health instead of CoinGecko quotes.
+
+SHA256d calculations:
+- Block reward: 3.125 BTC (2025) + ~0.7 BTC fees.
+- Energy: `hashrate * efficiency / 1e15 * 24` (~374 GWh/day).
+- Dollars per kWh: `(price * dailyBlocks * reward) / energy_kwh` (~$0.16/kWh).
 - **Sentiment Logic**:
   ```javascript
   if (dailyBlocks < 130) return { sentiment: "Need Energy", image: "WinterStorm.png", tooltip: "Network strain: Low block production (<130/day, 9.8% below 144/day target) signals insufficient hashrate, requiring more energy to maintain stable coin minting." };
