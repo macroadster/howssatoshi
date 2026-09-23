@@ -35,6 +35,10 @@
     const formatNumber = (num, digits = 2) => {
         if (num === null || num === undefined || Number.isNaN(num)) return 'N/A';
         const abs = Math.abs(num);
+        // Short scale past trillion so a large difficulty does not spill the stat cell.
+        if (abs >= 1e21) return (num / 1e21).toFixed(digits) + 'Sx';
+        if (abs >= 1e18) return (num / 1e18).toFixed(digits) + 'Qi';
+        if (abs >= 1e15) return (num / 1e15).toFixed(digits) + 'Q';
         if (abs >= 1e12) return (num / 1e12).toFixed(digits) + 'T';
         if (abs >= 1e9) return (num / 1e9).toFixed(digits) + 'B';
         if (abs >= 1e6) return (num / 1e6).toFixed(digits) + 'M';
@@ -85,6 +89,19 @@
             return s ? `${m}m ${s}s` : `${m}m`;
         }
         return formatDuration(seconds);
+    };
+
+    // mempool.guide's `difficulty` field is block work, 2^256 / (target+1),
+    // which is about difficulty * 2^32. At 35 PH/s that figure implies millions
+    // of years per block. Decode compact nBits with Bitcoin's diff1 target.
+    const difficultyFromBits = (bits) => {
+        if (!Number.isFinite(bits)) return NaN;
+        const compact = bits >>> 0;
+        const exponent = compact >>> 24;
+        const mantissa = compact & 0xffffff;
+        if (!mantissa || (mantissa & 0x800000)) return NaN;
+        const power = 208 - 8 * (exponent - 3);
+        return (0xffff / mantissa) * (2 ** power);
     };
 
     const formatBytes = (n) => {
@@ -314,7 +331,11 @@
             ? `≈ ${formatInt(minerEquiv)} Goldshell SC5 Pro at ${BLAKE2B_J_PER_TH} J/TH`
             : '';
 
-        el('difficulty-target').textContent = formatNumber(difficulty);
+        const difficultyEl = el('difficulty-target');
+        difficultyEl.textContent = formatNumber(difficulty);
+        difficultyEl.title = Number.isFinite(difficulty)
+            ? `Difficulty ${Math.round(difficulty).toLocaleString('en-US')}`
+            : '';
         const intervalEl = el('block-interval');
         intervalEl.textContent = Number.isFinite(intervalS)
             ? `${formatInterval(intervalS)} · ${formatInt(dailyBlocks)}/day`
@@ -407,7 +428,7 @@
                 height,
                 shaHeight,
                 hashrate: hashrateData && hashrateData.currentHashrate,
-                difficulty: hashrateData && hashrateData.currentDifficulty,
+                difficulty: blocks && blocks[0] ? difficultyFromBits(blocks[0].bits) : NaN,
                 adjustment,
                 mempool,
                 fees,
