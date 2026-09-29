@@ -355,29 +355,30 @@
         // Function to fetch all required data
         const fetchData = async () => {
             try {
-                // Fetch Bitcoin market data from CoinGecko API
-                const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
-                const marketData = await marketResponse.json();
+                // /coins/markets is CloudFront-blocked (403). /coins/bitcoin is still public.
+                const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false');
+                if (!marketResponse.ok) throw new Error('Failed to fetch market data.');
+                const coin = await marketResponse.json();
+                const market = coin.market_data;
 
                 // Fetch Bitcoin hashrate from a new reliable source (mempool.space)
                 const hashrateResponse = await fetch('https://mempool.space/api/v1/mining/hashrate/3d');
                 if (!hashrateResponse.ok) throw new Error('Failed to fetch hashrate data.');
                 const hashrateData = await hashrateResponse.json();
 
-                // Check if market data is valid
-                if (!Array.isArray(marketData) || marketData.length === 0) {
+                const price = market && market.current_price ? market.current_price.usd : NaN;
+                const marketCap = market && market.market_cap ? market.market_cap.usd : NaN;
+                const usdChange = market && market.price_change_percentage_24h_in_currency;
+                const usdCapChange = market && market.market_cap_change_percentage_24h_in_currency;
+                const change = usdChange ? usdChange.usd : NaN;
+                const marketCapChange = usdCapChange ? usdCapChange.usd : NaN;
+                if (![price, marketCap, change, marketCapChange].every(Number.isFinite)) {
                     console.error('Error: Market data from CoinGecko API is invalid.');
                     showError();
                     return;
                 }
 
                 const dailyBlocks = await fetchBitcoinBlocks();
-
-                const bitcoinData = marketData[0];
-                const price = bitcoinData.current_price;
-                const marketCap = bitcoinData.market_cap;
-                const change = bitcoinData.price_change_percentage_24h;
-                const marketCapChange = bitcoinData.market_cap_change_percentage_24h;
 
                 // Extract the difficulty from the latest block
                 const difficulty = hashrateData.currentDifficulty;
