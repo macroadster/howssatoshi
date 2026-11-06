@@ -48,11 +48,16 @@
 
         .main-container {
             height: 100vh;
+            /* Safari: 100vh includes the area under the toolbar, so use the
+               dynamic viewport height when available. */
+            height: 100dvh;
             overflow-y: auto;
             overflow-x: hidden;
             display: flex;
-            align-items: flex-start;
-            justify-content: center;
+            /* Centering is done with margin: auto on .page-column instead
+               of align-items/justify-content: center, which clips the top
+               in Safari when the content is taller than the viewport
+               (this page's lists always are). */
             position: relative;
             z-index: 10;
         }
@@ -91,6 +96,10 @@
 
         #image-container {
             height: 36vh;
+            height: 36dvh;
+            /* Fallback width if aspect-ratio is unsupported; width: auto
+               + aspect-ratio below takes over in modern browsers. */
+            width: calc(36vh * 864 / 1184);
             width: auto;
             aspect-ratio: 864 / 1184;
             display: flex;
@@ -106,9 +115,24 @@
             object-fit: contain;
         }
 
+        /* Centered column shared by the statue and the stats card.
+           Previously this used w-fit (shrink-to-fit) plus
+           .stats-card-container { width: 0; min-width: 100% } to make the
+           card match the image width. A percentage min-width against a
+           shrink-to-fit / indefinite containing block is resolved to the
+           full available width in Safari (but to the image width in
+           Chrome), so the card blew up to viewport width. Give the card
+           an explicit, definite width instead. */
+        .page-column {
+            margin: auto;
+            width: min(92vw, 28rem);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .stats-card-container {
-            width: 0;
-            min-width: 100%;
+            width: 100%;
         }
 
         .stat-label {
@@ -119,6 +143,22 @@
             letter-spacing: 0.05em;
             white-space: nowrap;
         }
+
+        /* Utilities used by the markup but missing from Quantum CSS:
+           gap-x/gap-y have no Quantum equivalents (only gap-* exists),
+           so define them here. Without them the grids have no gutters. */
+        .gap-x-2 { column-gap: 0.5rem; }
+        .gap-y-3 { row-gap: 0.75rem; }
+
+        /* Gradient title: Quantum CSS has bg-clip-text and bg-gradient-to-r
+           but no text-transparent / from-blue-400 / to-purple-500, so the
+           title rendered as plain white text. */
+        .text-transparent {
+            color: transparent;
+            -webkit-text-fill-color: transparent;
+        }
+        .from-blue-400 { --q-gradient-from: #60a5fa; }
+        .to-purple-500 { --q-gradient-to: #a855f7; }
 
         #sentiment-text[data-tooltip]::before,
         #sentiment-text[data-tooltip]::after {
@@ -288,7 +328,7 @@
         .live-dot.stale { background: #f87171; box-shadow: 0 0 8px #f87171; }
 
         @media (max-width: 639px) {
-            #image-container { height: 28vh; }
+            #image-container { height: 28vh; height: 28dvh; }
             .block-row { grid-template-columns: auto minmax(0, 1fr) auto; }
             .block-weight { display: none; }
         }
@@ -299,7 +339,7 @@
     <div class="stars-container ani-nebula" id="stars"></div>
 
     <div class="main-container p-4">
-        <div class="flex flex-col items-center mx-auto w-fit max-w-full" style="max-width: 28rem;">
+        <div class="page-column">
             <nav class="chain-switch" aria-label="Chain">
                 <a href="bitcoin.html">SHA256d</a>
                 <a href="blake2b.html" class="active" aria-current="page">BLAKE2b</a>
